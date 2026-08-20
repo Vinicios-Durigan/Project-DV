@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CropDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://sim/crops/crop_def.gd" id="1_crop_def"]
+
+[resource]
+script = ExtResource("1_crop_def")
+id = "morango"
+nome = "Morango"
+dias_por_estagio = Array[int]([2, 2, 4])
+colheitas_infinitas = true
+rende_por_colheita = 1
+preco_semente = 60
+preco_venda = 45
+item_semente = "semente_morango"
+item_colheita = "morango"
+bloqueia_movimento = false
+sprites_estagios = Array[String](["res://assets/crops/morango/morango_estagio_0.png", "res://assets/crops/morango/morango_estagio_1.png", "res://assets/crops/morango/morango_estagio_2.png", "res://assets/crops/morango/morango_estagio_3.png"])
+sprite_semente = "res://assets/crops/morango/morango_semente.png"
+sprite_fruto = "res://assets/crops/morango/morango_fruto.png"

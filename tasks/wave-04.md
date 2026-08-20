@@ -26,32 +26,43 @@ O loop econômico fecha: depositar no caixote, comprar sementes, e a venda concr
 
 ## Tarefas
 
-### 4.1 — ShippingState
+### 4.1 — [x] ShippingState
 Cria: sim/shipping/shipping_state.gd, tests/test_shipping_state.gd
 Faz: lista de itens depositados (item_id, qtd); defaults + to_dict/from_dict.
 
-### 4.2 — ShippingSystem: depositar e retirar
+### 4.2 — [x] ShippingSystem: depositar e retirar
 Cria: sim/shipping/shipping_system.gd, tests/test_shipping_system.gd
 Depende de: 4.1
 Faz: ShipItemAction (pós-validação da cadeia) e WithdrawItemAction; emite ItemShippedEvent/ItemWithdrawnEvent.
 
-### 4.3 — Venda ao dormir
+### 4.3 — [x] Venda ao dormir
 Cria: tests/test_shipping_sale.gd
 Altera: sim/shipping/shipping_system.gd
 Depende de: 4.2
 Faz: handle de SleepAction esvazia o caixote, calcula linhas e total pelo catálogo, emite ItemsSoldEvent.
 
-### 4.4 — Compra de sementes e reações de dinheiro
+### 4.4 — [x] Compra de sementes e reações de dinheiro
 Cria: tests/test_seed_purchase.gd
 Altera: sim/items/inventory_system.gd
 Depende de: 4.2
 Faz: BuySeedAction (valida dinheiro, debita, adiciona semente, SeedBoughtEvent); react a ItemsSoldEvent somando dinheiro e emitindo MoneyChangedEvent.
 
-### 4.5 — Teste integrado do dia completo
+### 4.5 — [x] Teste integrado do dia completo
 Cria: tests/test_dia_completo.gd
 Depende de: 4.3, 4.4
 Faz: cenário única sim: comprar semente → arar → plantar → regar → dormir N vezes → colher → depositar → dormir → dinheiro final bate na conta. Prova a ordem Inventory→Shipping→Farm→Time inteira.
 
 ## Em aberto
 
-- Preço de venda no ItemDef vs CropDef (colheita usa qual?) — decidir na 4.3: fonte única é ItemDef; CropDef aponta o item colhido.
+- ~~Preço de venda no ItemDef vs CropDef (colheita usa qual?)~~ — decidido na 4.3:
+  fonte única é `ItemDef.preco_venda`; o `CropDef` só aponta qual item a colheita
+  vira (`item_colheita_id()`). O `ShippingSystem` lê o `ItemCatalog` e mais nada.
+- **Colapso às 02:00 não vende o caixote.** O `TimeSystem` encerra o dia pelo
+  `tick()`, sem `SleepAction` passar pelo `ShippingSystem` — as culturas crescem,
+  o caixote não vende. O GAMEPLAY §3 diz "mesma sequência de dormir". Falta
+  decidir entre o caixote reagir a `DayEndedEvent` (a venda sairia depois da
+  virada no fluxo de eventos) ou o colapso despachar uma `SleepAction` de
+  verdade. Decisão de design fora do escopo desta wave.
+- **`data/items/` está vazio.** Sem `.tres` de item, todo preço de venda no jogo
+  real é 0 — os testes registram `ItemDef` na mão. Criar as definições dos 4
+  frutos + 4 sementes é conteúdo, não código: cabe numa wave de conteúdo.

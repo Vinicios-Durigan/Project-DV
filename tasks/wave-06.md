@@ -26,11 +26,11 @@ Toda sessão deixa rastro: ações gravadas e eventos logados em arquivo — o b
 
 ## Tarefas
 
-### 6.1 — ActionRecorder
+### 6.1 — ActionRecorder ✅
 Cria: sim/dev/action_recorder.gd, tests/test_action_recorder.gd
 Faz: registra cada ação despachada (tipo + campos via reflection + dia/minuto de jogo) numa lista exportável para JSONL.
 
-### 6.2 — EventLogger
+### 6.2 — EventLogger ✅
 Cria: sim/dev/event_logger.gd, tests/test_event_logger.gd
 Faz: serializa cada SimEvent emitido (tipo + campos + hora de jogo) para JSONL em `user://logs/`; desligável em release.
 
