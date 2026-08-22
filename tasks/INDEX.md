@@ -23,6 +23,8 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | 13 | Contrato — o dono encomenda, e aceitar é apostar | concluída | 2026-08-22 |
 | 14 | Terreno — o mapa fecha sozinho, e limpar é decisão | concluída | 2026-08-22 |
 | 14.1 | Água — o regador acaba, e regar vira rota | concluída | 2026-08-22 |
+| 15 | Estamina — o corpo cobra o trabalho, o relógio cobra a rota | concluída | 2026-08-22 |
+| 17 | Ofícios — a árvore do jogador | pendente | — |
 
 A wave 09 foi removida em 2026-08-21. "Pedido do dia" e "contrato de
 estabelecimento" eram a mesma mecânica: encomenda de um dono que te conhece e
