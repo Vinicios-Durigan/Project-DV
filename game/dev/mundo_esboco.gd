@@ -19,8 +19,26 @@ extends Control
 ##
 ## Toda cor sai da `paleta.gd` — este arquivo não declara nenhuma.
 
-## Um tile lógico da sim (16px do jogo real) desenhado em 20px de tela.
-const TILE: float = 20.0
+## Um tile lógico da sim (16px do jogo real) desenhado em 48px de tela.
+##
+## ## Por que 48 e não 20
+##
+## Resolução de sprite não decide o tamanho na tela — **zoom decide**. O
+## Stardew usa sprites de 16px como os nossos e os desenha com 64px, três
+## quartos da tela cobertos por uns 20 tiles. Com 20px por tile cabia o mapa
+## inteiro na tela e cada desenho ficava do tamanho de uma unha.
+##
+## 48 é o meio-termo medido no espaço que o mundo tem no playground (~800×510,
+## entre os dois rails): cabem 16×10 tiles, o canteiro de 8×6 aparece inteiro
+## com folga em volta, e o sprite fica 3× maior que o original.
+##
+## 64 daria exatamente o pixel do Stardew, mas sobrariam 12×8 tiles — o
+## canteiro encostaria nas bordas e a mira perderia contexto. Quando o jogo
+## visual existir, quem decide isso é a câmera dele, não esta constante.
+##
+## O preço de qualquer valor acima de 20 é o mapa não caber mais na tela de uma
+## vez — é o que a câmera de `_origem_mapa()` resolve.
+const TILE: float = 48.0
 ## GAMEPLAY §1: 4,5 tiles/s. A velocidade é a real para o playtest de
 ## distância valer — é ela que precifica a viagem à cidade.
 const TILES_POR_SEGUNDO: float = 4.5
@@ -121,8 +139,19 @@ var _piscadas: Dictionary = {}
 var _voos: Array[Dictionary] = []
 
 
+## Campo de visão mínimo, em tiles. Não é mais o mapa inteiro: com o tile em 32
+## o mapa tem 1056 de largura e pedir isso como mínimo esmagaria o resto do
+## playground. O que o mundo precisa garantir é enxergar o canteiro inteiro
+## (8×6) com folga em volta — abaixo disso a mira deixa de ser jogável.
+const VISAO_MINIMA: Vector2i = Vector2i(10, 8)
+
+
 func _ready() -> void:
-	custom_minimum_size = Vector2(_largura_mapa() * TILE, MAPA_ALTURA * TILE)
+	custom_minimum_size = Vector2(VISAO_MINIMA) * TILE
+	# O mapa passou a ser maior que a área que o mundo ocupa — sem recorte ele
+	# desenharia por cima da barra do topo e dos rails. Antes cabia inteiro e
+	# ninguém precisava disto.
+	clip_contents = true
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	# Um `Control` nasce com `MOUSE_FILTER_STOP`: ele engole o mouse antes de o
@@ -208,11 +237,21 @@ func tiles_do_predio(id: String) -> Rect2i:
 		+ PREDIO_OFFSET + Vector2i(0, indice * PREDIO_ESPACO)
 	return Rect2i(canto, PREDIO_TAMANHO)
 
-## O que o prédio escreve na fachada: `PRONTA`, o tempo que falta, ou nada.
+## O que o prédio escreve na fachada: `PEDIDO`, `PRONTA`, o tempo que falta, ou
+## nada.
 ##
 ## É a contagem regressiva que a regra do projeto pede — o jogador olha para a
 ## cidade do outro lado do caminho e decide a rota do dia sem abrir painel.
+##
+## Encomenda esperando resposta vem **na frente** do beneficiamento: a farinha
+## pronta espera o quanto for, mas a oferta tem prazo e sai da mesa sozinha.
 func selo_do_predio(id: String) -> String:
+	var contratos := _sistema_contratos()
+	if contratos != null:
+		var con := contratos.contrato_de(id)
+		if con != null:
+			return "PEDIDO" if not con.aceito \
+				else "!%s" % PainelCidade.texto_do_tempo(contratos.minutos_para_vencer(id))
 	var sistema := _sistema_cidade()
 	if sistema == null:
 		return ""
@@ -262,6 +301,14 @@ func _sistema_cidade() -> SistemaCidade:
 	for system in _bridge.get_world().get_systems():
 		if system is SistemaCidade:
 			return system as SistemaCidade
+	return null
+
+func _sistema_contratos() -> SistemaContratos:
+	if _bridge == null:
+		return null
+	for system in _bridge.get_world().get_systems():
+		if system is SistemaContratos:
+			return system as SistemaContratos
 	return null
 
 
@@ -545,6 +592,16 @@ func _desenha_broto(rect: Rect2, plot: Dictionary) -> void:
 		return
 	var estagio := int(plot.get("estagio", 0))
 	var pronta := estagio >= def.estagio_pronta()
+
+	# O sprite do estágio, quando o `.tres` da cultura já aponta um. Cultura
+	# sem arte continua sendo o quadrado que cresce — o esboço nunca fica em
+	# branco esperando o artista, e uma folha entregue pela metade já melhora
+	# metade do canteiro.
+	var sprite := Icones.do_estagio(_bridge.get_crop_catalog(), crop_id, estagio)
+	if sprite != null:
+		_desenha_sprite_do_broto(rect, sprite, pronta)
+		return
+
 	var fracao := 0.25 + 0.55 * (float(estagio) / float(maxi(def.estagio_pronta(), 1)))
 	var lado := rect.size.x * fracao
 	# Terceiro sinal da pronta: ela pulsa. O primeiro é ser maior, o segundo é
@@ -556,6 +613,19 @@ func _desenha_broto(rect: Rect2, plot: Dictionary) -> void:
 		rect.get_center() - Vector2(lado * 0.5, lado * 0.5),
 		Vector2(lado, lado))
 	draw_rect(broto, Paleta.PRONTA if pronta else Paleta.PLANTA)
+
+
+## O sprite ocupa o tile inteiro e continua pulsando quando está pronta.
+##
+## O pulso é o sinal que sobrevive à troca do quadrado pelo desenho: tamanho e
+## cor passam a ser da arte, e sem o pulso a pronta perderia o único aviso que
+## não depende de o artista ter acertado o contraste (GAMEPLAY §6).
+func _desenha_sprite_do_broto(rect: Rect2, sprite: Texture2D, pronta: bool) -> void:
+	var area := rect
+	if pronta:
+		area = rect.grow(rect.size.x * 0.5
+			* PULSO_AMPLITUDE * sin(_pulso / PULSO_SEGUNDOS * TAU))
+	draw_texture_rect(sprite, area, false)
 
 func _desenha_jogador(origem: Vector2) -> void:
 	# 16×32 do jogo real = 1×2 tiles do esboço.
@@ -589,9 +659,30 @@ func _largura_mapa() -> int:
 ## origem da geometria, e é ela que traduz mouse em tile. Se a tremida entrasse
 ## aqui, um clique durante os 0,2s do efeito poderia cair no canteiro do lado —
 ## juice não pode mudar onde a ação acerta.
+## Onde o canto do mapa cai na tela — a câmera do esboço.
+##
+## Decide **eixo a eixo**, e é isso que a torna simples: o que cabe fica
+## centralizado como sempre esteve; o que não cabe passa a seguir o jogador,
+## grudado nas bordas do mapa para nunca mostrar vazio ao lado dele.
+##
+## Com o tile em 32 a largura do mapa deixou de caber e a altura ainda cabe, o
+## que dá o comportamento certo de graça: a câmera acompanha o caminho até a
+## cidade — que é a distância que a mecânica precifica — e não sacode na
+## vertical enquanto o jogador anda pela fazenda.
+##
+## Nenhuma regra de jogo mora aqui: `_pos` é posição em pixel, que nunca chega
+## à sim (ver o cabeçalho do arquivo).
 func _origem_mapa() -> Vector2:
 	var mapa := Vector2(_largura_mapa(), MAPA_ALTURA) * TILE
-	return ((size - mapa) * 0.5).floor()
+	var centro := (size - mapa) * 0.5
+	# O corpo do jogador tem 1×2 tiles: o meio dele está meio tile à direita e
+	# um tile abaixo do canto. Centrar pelo canto deixaria a câmera torta.
+	var alvo := _pos + Vector2(TILE * 0.5, TILE)
+	var camera := size * 0.5 - alvo
+	return Vector2(
+		centro.x if mapa.x <= size.x else clampf(camera.x, size.x - mapa.x, 0.0),
+		centro.y if mapa.y <= size.y else clampf(camera.y, size.y - mapa.y, 0.0)
+	).floor()
 
 ## A origem do desenho: a de cima, sacudida. Quem desenha usa esta; quem mira
 ## usa a outra. O retículo desenha por aqui de propósito — ele acompanha a

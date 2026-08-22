@@ -64,6 +64,40 @@ A ordem de registro dos sistemas no tick central implementa essa sequência
 - **Dormir na porta da casa** — slice sem interior de casa. Corta um mapa inteiro de arte.
 - Sem stamina no slice. O limitador do dia é o relógio. Entra depois como sistema novo + migração de save.
 
+**Terreno (decidido em 2026-08-22, wave 14):** a fazenda não nasce inteiramente
+arável. Cada tile tem uma **cobertura** — `livre`, `mato`, `pedra`, `arvore`,
+`toco`, `agua` — e arar exige `livre`.
+
+- **Spawn é propagação, não chance por tile.** Mato nasce só adjacente a mato ou
+  a terreno selvagem. Limpar em bloco compacto se defende sozinho; limpar
+  espalhado deixa o jogador cercado. Chance uniforme por tile transformaria a
+  fazenda em manutenção.
+- **Entulho permanente não respawna.** Limpou, é para sempre — é o que separa
+  gate espacial de grind de coleta (PRINCIPIOS §8).
+- **Mapa desenhado, entulho sorteado.** A `semente_terreno` nasce na criação da
+  partida e mora no save: cada save tem uma fazenda diferente, e a mesma fazenda
+  nunca surpreende duas vezes. O mapa em si é autoral; a semente decide só onde
+  ficam as manchas.
+- **Solo arado e não plantado fecha em 3 dias.** Punição por arar demais, não por
+  descuido. **O mato nunca cobre tile plantado** — o que se perde é preparo não
+  usado, e arar de novo é um swing (§10 continua valendo).
+- **Limpar dá espaço, não dá item.** Madeira e pedra viram item só quando o
+  carpinteiro existir; até lá o toco não rebrota.
+- **Uma ação só, como sempre.** A enxada capina, a picareta quebra pedra, o
+  machado corta árvore (vira toco) e arranca toco. Quem decide é o
+  `ItemDef.alvos_de_limpeza` + o `resolvedor_uso.gd` — sem ferramenta com modo.
+
+**Água (decidido em 2026-08-22, wave 14.1):** o regador tem **carga** (15 tiles)
+e enche em tile `agua` — o poço, de posição fixa perto da casa. Regar deixa de
+ser clique infinito e vira rota: qual canto primeiro, e quando vale atravessar.
+Regar sem carga é recusa com motivo `sem_agua`. O regador de 30 cargas é o
+upgrade do ferreiro — a progressão vertical herdada da mina (PRINCIPIOS §8).
+
+**Descartado com motivo:** cavar a terra e achar item para vender (loot diário
+sem decisão possível — §7); forrageamento de flores e gravetos pelo mapa (grind
+de coleta puro — §8); erva daninha que nasce sozinha em tile aleatório
+(manutenção sem decisão).
+
 ## 5. Economia e fórmulas
 
 Fórmula-mestre: `lucro_por_dia_por_tile = (venda − semente) / dias_de_ciclo`.
@@ -172,6 +206,8 @@ Formato geral: pixel art, tile 16×16, personagem 16×32, paleta livre (definir 
 - Terra arada seca / terra arada **molhada** (variante escura — comunica rega)
 - Transições grama↔terra (autotile mínimo)
 - Obstáculos: pedra, toco/árvore (bloqueiam)
+- Mato (2 variações) — a cobertura que se propaga (wave 14)
+- Água/poço — onde o regador enche (wave 14.1)
 
 **Culturas (16×16 por estágio, ancorado no chão do tile):**
 - 4 culturas × 4 estágios (semente, broto, crescendo, **pronta** — a "pronta" maior/distinta, preparada para balanço de 2 frames) = 16
@@ -200,3 +236,12 @@ Formato geral: pixel art, tile 16×16, personagem 16×32, paleta livre (definir 
 - Zoom 2× da câmera — decidir com arte real na tela.
 - Mouse como override de seleção — só se o playtest pedir.
 - Replay player do dev tools — gravação entra no slice, player depois.
+- Quantos tiles o jogador limpa por dia — define se 3 dias para o arado fechar é
+  justo. Medir jogando (wave 14).
+- Distância entre poço e canteiro — é ela que decide se a rega é rota ou pedágio
+  (wave 14.1).
+- Bloqueio de movimento por cobertura — pedra e árvore bloqueiam, mas movimento
+  é `game/` e a sim não conhece a posição do jogador. O formato da consulta ao
+  `EstadoTerreno` fica para a wave de `game/`.
+- A wave do Bosque — toco renovável, madeira como item e muda de árvore. Depende
+  do carpinteiro existir; sem ele, manter toco não tem sentido.
