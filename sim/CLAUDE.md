@@ -48,6 +48,8 @@ func handle(action: SimAction) -> Array[SimEvent]:      # sim/farming/farm_syste
 
 **Validação em cadeia** — ação tem campo `rejeitada: bool`. O sistema que detecta impossibilidade (sem semente, sem dinheiro) marca a flag e emite `ActionRejectedEvent`; sistemas seguintes ignoram ação rejeitada. Ninguém desfaz nada: quem valida vem antes de quem executa.
 
-**Ordem de handle: Inventory → Shipping → Farm → Time.** A ordem é regra de jogo — ela implementa a validação em cadeia e a sequência de dormir (vender → crescer → virar o dia). Sistema novo entra na posição que sua regra exige, documentando o porquê.
+**Ordem de handle: Locais → Inventory → Shipping → Farm → Cidade → Time.** A ordem é regra de jogo — ela implementa a validação em cadeia e a sequência de dormir (vender → crescer → virar o dia). Sistema novo entra na posição que sua regra exige, documentando o porquê. A `SistemaCidade` (wave 12) entra depois do Farm, para a colheita da manhã já estar na mochila quando ela age, e antes do Time.
+
+`SistemaLocais` (wave 10) é o primeiro por um motivo concreto: `PlantCropAction` estende `RemoveItemAction`, então a semente sai da mochila ao passar pelo `InventorySystem`. Se o carimbo de "fora do lugar" chegasse depois, plantar na cidade cobraria a semente de uma ação recusada. Validador novo entra **antes** de quem cobra.
 
 **Definições são leitura livre** — catálogos (`data/*.tres`) qualquer sistema lê; o que é proibido é ler *state* alheio.

@@ -221,19 +221,141 @@ por caractere: minúsculo, sem acento, sublinhado e não hífen.
 
 ---
 
+## 10.1 O Fatiador — de uma imagem só para os arquivos do jogo
+
+O projeto espera **um PNG por sprite**, com o nome exato deste documento. Se a
+arte veio numa folha só, ou veio grande demais, não precisa recortar na mão.
+
+Abra um terminal na raiz do projeto e rode:
+
+```
+tools\fatiar.bat
+```
+
+Abre uma janela. Não precisa instalar nada e não precisa saber programar — é a
+Godot que faz o trabalho.
+
+### O que a janela faz
+
+Da esquerda para a direita, na ordem dos números:
+
+1. **A folha** — abre a imagem.
+2. **Para onde vai** — escolha o tipo (Item, Cultura, Objeto, Chão, UI,
+   Personagem, Partícula) e a pasta certa é preenchida sozinha. Em Cultura,
+   digite o nome — "Abóbora" vira `assets/crops/abobora/`, sem acento.
+3. **Fundo** — a cor de fundo é detectada sozinha e removida. Se sobrar
+   moldura em volta do desenho, aumente a tolerância.
+4. **Corte** — cada desenho é achado sozinho e marcado em verde, com um número.
+5. **Acabamento** — tamanho da célula, onde o desenho encosta, escala.
+6. **Nomes** — um por linha, na ordem dos números verdes. Em Cultura, o botão
+   "Preencher pela convenção" escreve estágios, semente e fruto de uma vez.
+7. **Gravar**.
+
+A faixa embaixo da imagem mostra **cada sprite exatamente como vai para o
+disco**, ampliado. É ali que se confere se ficou 16×16 e se ainda dá para
+reconhecer o desenho nesse tamanho.
+
+Depois de gravar, rode `godot --headless --import`, como na seção 10.
+
+### Se a imagem veio grande, ou foi gerada por IA
+
+Este é o caso mais comum hoje: a imagem tem 512 ou 1024 px, bordas suaves e
+centenas de tons. Reduzir isso para 16×16 e pronto não dá pixel art — dá uma
+mancha borrada com franja cinza em volta.
+
+Na janela, ligue **"Tratar como arte gerada"** (seção 5.1). Ele faz quatro
+coisas de uma vez, que só funcionam juntas:
+
+| Etapa | Por quê |
+| --- | --- |
+| Reduz até caber na célula | Sem cortar o desenho e sem achatar a proporção |
+| Reduz suavizando | Pular pixel numa redução grande transforma o desenho em ruído |
+| Corta o alfa | Pixel art não tem transparência pela metade — é o que tira a franja |
+| Corta a paleta em 16 cores | **É isto que faz parecer pixel art.** Não é só o tamanho |
+
+Cada uma continua disponível solta, logo abaixo do interruptor, para afinar.
+
+### Se a contagem de sprites sair errada
+
+| Sintoma | Conserto |
+| --- | --- |
+| Um desenho virou dois recortes | Aumente "Juntar pedaços a até" |
+| Dois desenhos vizinhos viraram um só | Diminua "Juntar pedaços a até" |
+| Apareceu recorte de sujeira | Aumente "Ignorar menor que" |
+| Sobrou moldura de fundo em volta | Aumente a tolerância |
+| Não achou nada | Escolha "Esta cor" e clique na cor do seu fundo |
+| Sobrou fundo **dentro** do desenho | Ligue "Apagar a cor na imagem toda" |
+
+Dois desenhos encostados na folha são um sprite só para a ferramenta — nesse
+caso separe os dois na imagem de origem por uns 3 px de fundo e abra de novo.
+
+### Pelo terminal, se preferir
+
+Tudo o que a janela faz também roda por linha de comando, com os mesmos nomes:
+
+```
+tools\fatiar.bat --entrada=C:\caminho\itens.png --tipo=item --listar
+tools\fatiar.bat --entrada=C:\caminho\trigo.png --tipo=cultura --slug=trigo
+tools\fatiar.bat --entrada=C:\caminho\gerado.png --tipo=item --de-ia
+```
+
+`--listar` mostra o que achou sem gravar nada; `--contato=arquivo.png` grava uma
+folha de conferência com todos os recortes numerados. `tools\fatiar.bat --ajuda`
+lista o resto.
+
+A ferramenta não sobrescreve arquivo que já existe sem perguntar.
+
+---
+
 ## 11. Já decidido, mas ainda não é para desenhar
 
 Estes itens **estão decididos** e vão existir. Não desenhe agora — mas saiba que
 vêm, porque eles mudam como você planeja o lote das culturas.
 
-### Trigo — a quinta cultura
+### Trigo — a quinta cultura (já existe no código, desde a wave 12)
 
 A cidade precisa dela: trigo vira farinha no moinho, farinha vira pão na
 padaria. Mesmo padrão da seção 2 — 4 estágios mais os dois ícones, na pasta
-`assets/crops/trigo/`.
+`assets/crops/trigo/`:
+
+```
+assets/crops/trigo/trigo_estagio_0.png   16×16
+assets/crops/trigo/trigo_estagio_1.png   16×16
+assets/crops/trigo/trigo_estagio_2.png   16×16
+assets/crops/trigo/trigo_estagio_3.png   16×16   (pronta)
+assets/crops/trigo/trigo_semente.png     16×16   (ícone do pacote)
+assets/crops/trigo/trigo_fruto.png       16×16   (ícone na hotbar)
+```
 
 **Confirme com o dev antes de fechar o lote das quatro originais.** Se você já
 está desenhando as 24, desenhar 30 de uma vez sai mais barato que voltar depois.
+
+### Farinha e pão — dois ícones de item, sem cultura
+
+Eles não crescem em canteiro: a cidade os fabrica. Precisam só do **ícone de
+mochila**, no mesmo padrão dos frutos:
+
+```
+assets/items/farinha.png   16×16
+assets/items/pao.png       16×16
+```
+
+Leitura instantânea importa aqui mais que nas culturas: pão é o item mais caro
+do jogo até agora (260g contra 180g da abóbora), e o jogador tem que reconhecer
+o que ele está carregando sem ler o nome.
+
+### Moinho e padaria — os dois prédios da cidade
+
+Ainda **não desenhe**. O código da wave 12 os trata como `.tres` de dados, sem
+sprite nenhum, e a cidade só existe como esboço de retângulo no playground. O
+que já está travado e não vai mudar:
+
+- são **dois** estabelecimentos no slice, moinho e padaria;
+- cada um é um **ponto de interação** no mapa da cidade, não um cenário de
+  fundo — o jogador chega, entrega, e volta depois para buscar;
+- eles precisam mostrar, de longe, que **têm coisa pronta esperando**. O formato
+  desse aviso (fumaça, luz na janela, ícone flutuante) é decisão de arte e ainda
+  não foi tomada — traga uma proposta.
 
 ### Cultura gigante
 

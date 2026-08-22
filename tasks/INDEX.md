@@ -13,13 +13,18 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | 07 | Ponte — a sim ganha tempo real e disco | concluída | 2026-08-20 |
 | 08 | Playground — Fazenda de Botões | concluída | 2026-08-20 |
 | 09 | ~~Pedido do dia~~ | absorvida pela cidade | 2026-08-21 |
-| 10 | Esboço do mundo — locais, viagem e mira | pendente | 2026-08-21 |
-| 11 | A cara do playground — tema, layout e juice | pendente | 2026-08-21 |
-| 12 | Cidade — beneficiamento e cota | pendente | 2026-08-21 |
+| 10 | Esboço do mundo — locais, viagem e mira | concluída | 2026-08-21 |
+| 11 | A cara do playground — tema, layout e juice | concluída | 2026-08-21 |
+| 11.1 | Mochila em tela cheia — o inventário no Tab | concluída | 2026-08-21 |
+| 11.2 | Item na mão — uma ação só, e a hotbar decide | concluída | 2026-08-22 |
+| 11.3 | Slots posicionais — arrastar e soltar | concluída | 2026-08-22 |
+| 12 | Cidade — beneficiamento e cota | concluída | 2026-08-22 |
+| 12.1 | A cidade ganha lugar — prédios no mapa e aba no Tab | concluída | 2026-08-22 |
+| 13 | Contrato — o dono encomenda, e aceitar é apostar | pendente | 2026-08-22 |
 
 A wave 09 foi removida em 2026-08-21. "Pedido do dia" e "contrato de
 estabelecimento" eram a mesma mecânica: encomenda de um dono que te conhece e
 fica bravo se você falha é mais forte que bônus sorteado num caixote anônimo.
-As decisões que valiam a pena estão preservadas em `tasks/wave-10.md`, seção
+As decisões que valiam a pena estão preservadas em `tasks/wave-12.md`, seção
 "Em aberto", e entram na wave do contrato. Nada foi implementado — a absorção
 não custou código.

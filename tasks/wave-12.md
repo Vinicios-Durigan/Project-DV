@@ -32,6 +32,17 @@ português.
 - **O item beneficiado fica no estabelecimento até a retirada.** Mesmo formato
   do `ShippingState` do caixote — a retirada é um `ItemGrantedEvent`, igual ao
   `ItemWithdrawnEvent`. Buscar custa o dia, e é de propósito (PRINCIPIOS §9).
+- **A taxa é paga na retirada, não na entrega** — decidido em 2026-08-21, durante
+  a implementação. O texto original dizia "entregar cobra taxa", mas isso é
+  impossível sem mexer no `InventorySystem`: quem é dono do dinheiro é ele, ele
+  roda **antes** da cidade na ordem fixa, e uma ação só estende uma classe — ou
+  é `RemoveItemAction` (tira o trigo) ou é `AddMoneyAction` (cobra e recusa por
+  saldo). Pagando na retirada as duas metades caem em ações diferentes e
+  **nenhum sistema existente é editado**: `EntregarAction` é uma
+  `RemoveItemAction`, `RetirarAction` é uma `AddMoneyAction`. A ficção melhora
+  junto: entrega o trigo, paga o moleiro quando busca a farinha — e a farinha
+  fica presa ocupando cota enquanto você não tiver o dinheiro, o que é atrito
+  a mais, não a menos.
 - **Cota é o atrito** (PRINCIPIOS §7): o moinho não engole a colheita inteira,
   então a decisão vira *quando e quanto* entregar — e a constância acontece
   sozinha, sem o jogo pedir.
@@ -60,14 +71,14 @@ português.
 
 ## Tarefas
 
-### 12.1 — A cadeia de itens
+### 12.1 — A cadeia de itens ✅
 Cria: data/crops/trigo.tres, data/items/trigo.tres, data/items/semente_trigo.tres, data/items/farinha.tres, data/items/pao.tres, tests/test_cadeia_trigo.gd
 Faz: a cultura e os três itens que a cidade vai transformar, registrados nos
 catálogos existentes. Zero código novo. Balanceamento pela fórmula-mestre do
 GAMEPLAY §5: pão vale mais que farinha, que vale mais que trigo, com folga para
 a taxa de beneficiamento.
 
-### 12.2 — DefEstabelecimento
+### 12.2 — DefEstabelecimento ✅
 Cria: sim/cidade/def_estabelecimento.gd, data/cidade/moinho.tres, data/cidade/padaria.tres, tests/test_def_estabelecimento.gd
 Depende de: 12.1
 Faz: recurso que o artista/designer edita — id, nome, item de entrada, item de
@@ -75,14 +86,14 @@ saída, quantos entram por quantos saem, prazo em minutos de jogo, taxa por
 unidade, cota inicial, capacidade total, limiares de relação por degrau. Todo
 campo com default que preserva comportamento.
 
-### 12.3 — EstadoCidade
+### 12.3 — EstadoCidade ✅
 Cria: sim/cidade/estado_cidade.gd, tests/test_estado_cidade.gd
 Depende de: 12.2
 Faz: por estabelecimento — dias com entrega, último dia creditado, cota atual,
 encomendas em andamento (item, qtd, minuto de conclusão) e prontas para
 retirada. `to_dict`/`from_dict` com default em tudo.
 
-### 12.4 — SistemaCidade
+### 12.4 — SistemaCidade ✅
 Cria: sim/cidade/sistema_cidade.gd, sim/cidade/entregar_action.gd, sim/cidade/retirar_action.gd, tests/test_sistema_cidade.gd
 Depende de: 12.3
 Faz: entregar (valida cota, cobra taxa, agenda conclusão pelo relógio
@@ -90,7 +101,7 @@ monotônico, credita constância uma vez por dia), concluir no tick quando o
 minuto chega, retirar (devolve como `ItemGrantedEvent`). Rejeição por cota
 estourada ou dinheiro insuficiente sai como `ActionRejectedEvent`.
 
-### 12.5 — Painel da cidade no playground
+### 12.5 — Painel da cidade no playground ✅
 Cria: game/dev/painel_cidade.gd
 Depende de: 12.4
 Faz: por estabelecimento — relação, cota usada/total, fila de encomendas com
@@ -99,6 +110,24 @@ o padrão 3 (escutar avisos) de `docs/receitas/`.
 
 ## Em aberto
 
+- **A cidade precisa de tela, não de painel no rail.** Decidido em 2026-08-22,
+  depois de a wave fechar: mecânica nova só está pronta com **aba própria** (a
+  cidade deve virar uma aba do inventário, no Tab), **pontos de ativação no
+  mundo** — o moinho e a padaria como lugares onde se clica para entregar e
+  retirar, e não botões soltos numa coluna — e **contagem regressiva visível**
+  na tela. O `painel_cidade.gd` desta wave entrega a mecânica jogável e o
+  contrato com a sim; a tela é wave própria.
+- **Save anterior à wave 11.2 perde as ferramentas.** O `SaveGateway` carrega o
+  slot no boot e o `restore()` substitui a mochila inteira, então enxada e
+  regador — que só existem na entrega inicial de uma partida nova — somem. O
+  `slot_1.json` do dev foi remendado à mão em 2026-08-22 (backup em
+  `slot_1.json.bak`), mas o conserto de verdade é uma migração em
+  `sim/save/save_migrations.gd`, e ela é da wave 11.2.
+- **32 órfãos de nó nos testes que montam o playground inteiro.** Vêm dos nós
+  que o `PainelCidade` cria em `setup()` em vez de `_ready()` — o GUT tira a
+  foto antes de o `queue_free` do bridge terminar. Não é vazamento em jogo (os
+  nós estão na árvore e morrem com ela) e a suíte passa; se incomodar, resolve-se
+  montando a casca do painel no `_ready`.
 - **Quantos estabelecimentos o jogo terá no total.** Dois provam a cadeia; o
   número final decide o tamanho da cidade e o custo de arte. Decidir antes da
   wave 11.

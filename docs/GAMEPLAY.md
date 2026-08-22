@@ -54,6 +54,12 @@ A ordem de registro dos sistemas no tick central implementa essa sequência
 - Cultura **não regada pausa** o crescimento (não morre). Morte pune demais sem mitigação (sprinkler futuro).
 - Culturas **não bloqueiam** movimento por padrão; `CropDef.bloqueia_movimento: bool` (default `false`) liga por cultura. As 4 iniciais: `false`.
 - **Hotbar 8 slots**, teclas 1–8 + scroll. Ferramentas e sementes ocupam slots.
+  A hotbar é a fatia de cima da mochila, não uma segunda bolsa. O slot na mão
+  (`slot_na_mao`) está no save.
+- **Uma ação só: usar.** O que ela faz depende do item na mão — enxada ara,
+  regador rega, semente planta aquela cultura. **Cultura pronta tem
+  prioridade**: usar num tile maduro colhe, seja o que for que esteja na mão
+  (§6, "colher: sem swing"). Quem decide é `sim/items/resolvedor_uso.gd`.
 - **Caixote:** interagir abre painel; clique deposita 1, shift-clique o stack; venda só concretiza ao dormir (dá pra tirar de volta). O mesmo painel tem **aba de compra de sementes** — sem compra, dinheiro é número morto e o loop não fecha. (Alternativa descartada: loja/NPC — mais arte e escopo que o slice comporta.)
 - **Dormir na porta da casa** — slice sem interior de casa. Corta um mapa inteiro de arte.
 - Sem stamina no slice. O limitador do dia é o relógio. Entra depois como sistema novo + migração de save.
@@ -123,7 +129,11 @@ Regra de balanceamento: lucro/dia da lenta ≈ 2× o da rápida.
 **Definições (estático, editor-friendly):** Resources `.tres` em `data/`.
 - `CropDef`: id, nome, dias_por_estagio, preco_semente, colheitas_infinitas, bloqueia_movimento, sprites. O preço de **venda** não mora aqui: quem sabe quanto um item vale é o `ItemDef` dele — o caixote vende itens, não culturas.
 - `ItemDef`: id, nome, preco_venda, stack_max. Fonte única de preço de venda.
-- `ToolDef`: id, nome, ação que despacha, ícone.
+- ~~`ToolDef`~~ — **morreu na wave 11.2**. Ferramenta já precisa ser `ItemDef`
+  para ocupar um slot da mochila (§4), e um resource paralelo duplicaria id,
+  nome e ícone só para acrescentar um campo. O que a distingue agora é
+  `ItemDef.acao_de_uso` (`"arar"`, `"regar"`, vazio = item comum). Ferramenta
+  nova = um `.tres` + um caso em `sim/items/resolvedor_uso.gd`.
 - Designer ajusta balanceamento sem tocar código. Sem SQLite — overkill absoluto para single-player farming.
 
 **Estado (dinâmico, save):** SimStates → JSON versionado em `user://saves/slot_N.json`.
@@ -133,7 +143,7 @@ Regra de balanceamento: lucro/dia da lenta ≈ 2× o da rápida.
   "save_version": 1,
   "time":  { "dia": 3, "minuto": 360, "estacao": "primavera" },
   "farm":  { "plots": { "12:07": { "crop_id": "rabanete", "estagio": 2, "regada": true } } },
-  "inventory": { "0": { "slots": [ { "item_id": "rabanete", "qtd": 5 } ], "capacity": 24, "dinheiro": 500 } },
+  "inventory": { "0": { "slots": [ { "item_id": "enxada", "qtd": 1 }, { "item_id": "", "qtd": 0 }, … ], "capacity": 24, "dinheiro": 500, "slot_na_mao": 0 } },
   "shipping": { "itens": [] }
 }
 ```
