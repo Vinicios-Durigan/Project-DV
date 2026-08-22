@@ -82,24 +82,74 @@ Isso **não** libera escopo infinito: a lista de mecânicas do slice é fechada 
 está no manual. Mecânica que não está na lista entra depois do beta visual, não
 antes.
 
+## A cena é nossa, a arte é dele
+
+Cena de jogo nasce **por mão de dev**: hierarquia de nós, colisores, área de
+interação, âncora, script. O artista nunca precisa criar cena, saber o que é
+`Area2D`, nem lembrar de arrastar mais uma instância quando um conteúdo novo
+entrar.
+
+O que ele faz é preencher `.tres`. Sprite é um **campo de caminho** no `.tres`
+(`ItemDef.sprite`, `CropDef.sprites_estagios`, `DefEstabelecimento.sprite`) —
+`sim/` não conhece `Texture2D`, e quem transforma caminho em textura é
+`game/icones.gd`, com cache.
+
+Três consequências que valem para toda família de conteúdo:
+
+- **Uma cena-molde por família, não uma cena por conteúdo.** Moinho, padaria e
+  ferreiro são a mesma `estabelecimento.tscn`, carimbada com id e sprite
+  diferentes. Conteúdo é id, não classe.
+- **Quem carimba é código.** Um spawner lê o catálogo (`SistemaCidade.ids()`,
+  `CropCatalog`, …) e instancia o molde uma vez por item encontrado. `.tres`
+  novo aparece no jogo sozinho, sem editar cena e sem editar código.
+- **O molde nasce sem arte.** Textura fixa dentro do `.tscn` vira mentira
+  quando o segundo conteúdo daquela família chega. Arte faltando devolve `null`
+  e o nó nasce sem desenho: a mecânica continua jogável antes de o primeiro
+  sprite existir — a mesma promessa do playground.
+
+Layout é `game/`, nunca conteúdo: **onde** um prédio fica sai de uma conta pela
+ordem da lista (`Cidade.posicao_de`), não de uma coordenada digitada no `.tres`.
+O artista não pensa em pixel para cadastrar conteúdo.
+
+A referência do padrão é `game/cidade/` — `estabelecimento.tscn` é o molde e
+`cidade.gd` é o spawner.
+
 ## Documentação é visual
 
 O time tem duas pessoas e uma delas não lê código. Documentação só em `.md` não
 é entrega completa.
 
-Existe **uma página viva** — o Manual do Project-DV, publicado como artefato em
-`https://claude.ai/code/artifact/f66c7542-73f4-4c14-ba37-e0d4bde73302` — e ela é
-a porta de entrada do projeto: o que o jogo é, como a arquitetura funciona, o
-que já está pronto, o que falta para o beta, como rodar e o que dá para mexer
-sem programar.
+Existem **duas páginas vivas**, e só duas. Cada uma tem um endereço fixo, e
+nenhuma das duas ganha uma segunda versão.
+
+**1. O Manual do Project-DV** —
+`https://claude.ai/code/artifact/f66c7542-73f4-4c14-ba37-e0d4bde73302`
+
+A porta de entrada: **como o projeto funciona**. Arquitetura, o que já está
+pronto, o que falta para o beta, como rodar, o pacote do artista e o que dá para
+mexer sem programar.
+
+**2. Mecânicas do Project-DV** —
+`https://claude.ai/code/artifact/3ac2de99-21b8-478c-bc51-14b4bc605180`
+
+A referência de gameplay: **o que o jogo é**. Cada sistema com seus números
+reais — culturas, terreno, itens, cota, relação, contratos —, o ciclo do dia
+inteiro, o que está planejado e o que foi descartado com motivo. Escrita para
+quem não abre o código.
 
 Regras:
 
-- **Toda wave fechada atualiza o manual** antes de a wave ser dada por
+- **Toda wave fechada atualiza as duas páginas** antes de a wave ser dada por
   encerrada. Wave que muda arquitetura, decisão travada, ordem do laço ou
-  necessidade de arte tem que aparecer lá.
-- **Uma página só.** Republicar sempre no mesmo endereço, nunca criar uma
-  segunda — o link é distribuído e tem que continuar valendo.
+  necessidade de arte aparece no **manual**; wave que cria, muda ou rebalanceia
+  mecânica aparece nas **mecânicas** — com o número real, o selo de `no jogo` ou
+  `planejado` e a decisão que a sustenta. Página que mente sobre o balanceamento
+  é pior que página nenhuma.
+- **Duas páginas, dois endereços fixos.** Republicar sempre no mesmo endereço,
+  nunca criar uma terceira — os links são distribuídos e têm que continuar
+  valendo.
+- As duas se linkam uma à outra. O link do manual para as mecânicas fica no
+  topo e no rodapé.
 - Os `.md` em `docs/` continuam sendo a fonte de verdade escrita
   (`GAMEPLAY.md` para design, `ARTE.md` para a especificação de arte). O manual
   é a leitura, não a fonte — se divergirem, o `.md` manda e o manual é corrigido.
@@ -113,10 +163,12 @@ sim/          lógica pura de jogo, sem engine — o coração das regras
   inventory/  slots, empilhamento, capacidade, transferências
   economy/    dinheiro, preços, compra e venda
 game/         cenas, nós, render e input — camada de apresentação
+  cidade/     os prédios da cidade: a cena-molde e o spawner que a carimba
   player/     controle do jogador, câmera, animação
   farm/       tilemap da fazenda, plantio visual, interação com o mundo
   ui/         HUD, menus, inventário na tela, diálogos
 data/         recursos .tres que o artista edita direto no editor Godot
+  cidade/     definição de cada estabelecimento (sprite, receita, cota)
   crops/      definição de cada cultura (sprite, preço, estágios)
   items/      definição de cada item (ícone, valor, empilhável)
 tests/        testes GUT headless, espelhando a estrutura de sim/
