@@ -50,13 +50,19 @@ const RENDE_PADRAO: int = 1
 @export var bloqueia_movimento: bool = false
 
 @export_group("Sprites")
+## `@export_file` é só um hint de editor: o valor continua `String` e `sim/`
+## continua sem conhecer `Texture2D`. O que ele muda é o inspector, que passa a
+## aceitar o PNG **arrastado do FileSystem** em vez de exigir o caminho digitado
+## à mão — errar uma letra aqui é o jeito mais comum de o sprite não aparecer no
+## jogo, e o erro só se vê rodando.
+##
 ## Um caminho por estágio, do recém-plantado ao pronta (tamanho esperado:
 ## `dias_por_estagio.size() + 1`). A arte entra na wave visual.
-@export var sprites_estagios: Array[String] = []
+@export_file("*.png") var sprites_estagios: Array[String] = []
 ## Ícone do pacote de semente na hotbar.
-@export var sprite_semente: String = ""
+@export_file("*.png") var sprite_semente: String = ""
 ## Ícone do fruto na hotbar.
-@export var sprite_fruto: String = ""
+@export_file("*.png") var sprite_fruto: String = ""
 
 
 ## Quantos estágios a cultura tem, contando o pronta.

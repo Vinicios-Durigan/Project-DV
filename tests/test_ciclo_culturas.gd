@@ -208,3 +208,21 @@ func test_fim_de_estacao_limpa_o_que_ficou_no_chao() -> void:
 	assert_false(_farm.get_state().get_plot(4, 4).tem_cultura())
 	assert_true(_farm.get_state().get_plot(4, 4).arada, "a terra continua arada para a estação nova")
 	assert_eq(_time.get_state().dia, 1, "estação nova começa no dia 1")
+
+## Os caminhos de sprite da cultura aceitam o PNG **arrastado do FileSystem**.
+## São seis por cultura, quatro deles num array — digitar seis caminhos à mão,
+## por cultura, é onde o erro de uma letra mora, e ele só aparece rodando.
+func test_os_campos_de_sprite_aceitam_arrastar_do_filesystem() -> void:
+	var achados: Array[String] = []
+	for prop: Dictionary in CropDef.new().get_property_list():
+		var nome: String = String(prop["name"])
+		match nome:
+			"sprite_semente", "sprite_fruto":
+				assert_eq(prop["hint"], PROPERTY_HINT_FILE, "%s: seletor de arquivo" % nome)
+				achados.append(nome)
+			"sprites_estagios":
+				# Array carrega o hint dos elementos codificado no hint_string.
+				assert_string_contains(String(prop["hint_string"]), "%d:" % PROPERTY_HINT_FILE)
+				assert_string_contains(String(prop["hint_string"]), "png")
+				achados.append(nome)
+	assert_eq(achados.size(), 3, "os três campos de sprite continuam lá")

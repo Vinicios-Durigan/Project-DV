@@ -136,6 +136,67 @@ static func normaliza_slug(bruto: String) -> String:
 	return limpo.strip_edges().trim_prefix("_").trim_suffix("_")
 
 
+## Como distribuir um nome base entre vários sprites de uma vez.
+##
+## A ordem de leitura da folha decide qual serve. As folhas do projeto vêm em
+## duas: umas começam pelo pacote de semente, outras deixam semente e fruto por
+## último, depois dos estágios. Adivinhar erraria metade das vezes — e um nome
+## errado só aparece semanas depois, com o sprite trocado no jogo.
+enum Padrao { CULTURA_SEMENTE_PRIMEIRO, CULTURA_SEMENTE_NO_FIM, NUMERADO }
+
+
+static func rotulo_do_padrao(padrao: Padrao) -> String:
+	match padrao:
+		Padrao.CULTURA_SEMENTE_PRIMEIRO:
+			return "Cultura — semente, estágios, fruto"
+		Padrao.CULTURA_SEMENTE_NO_FIM:
+			return "Cultura — estágios, semente, fruto"
+		_:
+			return "Numerado — nome_0, nome_1, ..."
+
+
+static func padroes_em_ordem() -> Array[Padrao]:
+	return [Padrao.CULTURA_SEMENTE_PRIMEIRO, Padrao.CULTURA_SEMENTE_NO_FIM, Padrao.NUMERADO]
+
+
+## Os nomes de um lote inteiro, a partir de um nome base.
+##
+## É o que transforma "marquei os seis sprites da abóbora" em seis arquivos com
+## os sufixos certos, em vez de seis `abobora` que se sobrescreveriam.
+static func nomes_em_lote(base: String, quantos: int, padrao: Padrao) -> PackedStringArray:
+	var nomes: PackedStringArray = PackedStringArray()
+	var limpo: String = normaliza_slug(base)
+	if limpo.is_empty() or quantos <= 0:
+		return nomes
+
+	if padrao == Padrao.NUMERADO:
+		if quantos == 1:
+			nomes.append(limpo)
+			return nomes
+		for i in quantos:
+			nomes.append("%s_%d" % [limpo, i])
+		return nomes
+
+	# Cultura: um pacote de semente, um fruto colhido, e o resto são estágios.
+	# Com menos de três sprites não há estágio nenhum a nomear, e o lote vira só
+	# semente e fruto.
+	var estagios: int = maxi(0, quantos - 2)
+	if padrao == Padrao.CULTURA_SEMENTE_PRIMEIRO:
+		nomes.append(limpo + SUFIXO_SEMENTE)
+		for i in estagios:
+			nomes.append(limpo + SUFIXO_ESTAGIO % i)
+		if quantos >= 2:
+			nomes.append(limpo + SUFIXO_FRUTO)
+		return nomes
+
+	for i in estagios:
+		nomes.append(limpo + SUFIXO_ESTAGIO % i)
+	if quantos >= 2:
+		nomes.append(limpo + SUFIXO_SEMENTE)
+	nomes.append(limpo + SUFIXO_FRUTO)
+	return nomes
+
+
 ## Os nomes que o tipo já sabe de cor, na ordem de leitura.
 ##
 ## Cultura tem convenção fechada — estágios, semente, fruto — e é a única em que

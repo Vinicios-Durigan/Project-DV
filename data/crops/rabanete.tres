@@ -1,18 +1,15 @@
-[gd_resource type="Resource" script_class="CropDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="CropDef" format=3 uid="uid://ckdhb0rnpjgec"]
 
-[ext_resource type="Script" path="res://sim/crops/crop_def.gd" id="1_crop_def"]
+[ext_resource type="Script" uid="uid://dgfx0rkuontmd" path="res://sim/crops/crop_def.gd" id="1_crop_def"]
 
 [resource]
 script = ExtResource("1_crop_def")
 id = "rabanete"
 nome = "Rabanete"
 dias_por_estagio = Array[int]([1, 1, 2])
-colheitas_infinitas = false
-rende_por_colheita = 1
 preco_semente = 20
 item_semente = "semente_rabanete"
 item_colheita = "rabanete"
-bloqueia_movimento = false
-sprites_estagios = Array[String](["res://assets/crops/rabanete/rabanete_estagio_0.png", "res://assets/crops/rabanete/rabanete_estagio_1.png", "res://assets/crops/rabanete/rabanete_estagio_2.png", "res://assets/crops/rabanete/rabanete_estagio_3.png"])
-sprite_semente = "res://assets/crops/rabanete/rabanete_semente.png"
-sprite_fruto = "res://assets/crops/rabanete/rabanete_fruto.png"
+sprites_estagios = Array[String](["uid://cvfpw5mdo8m7f", "uid://du5nrtvuanw43", "uid://02qgav4jt6ba", "uid://d2cr3j5ycxiyn"])
+sprite_semente = "uid://cvfpw5mdo8m7f"
+sprite_fruto = "uid://daiphoo51sm4r"

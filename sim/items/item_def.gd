@@ -57,4 +57,10 @@ const ACOES_CONHECIDAS: Array[String] = [ACAO_NENHUMA, ACAO_ARAR, ACAO_REGAR]
 ##
 ## Vazio = arte ainda não entrou. `game/` mostra o placeholder e o jogo roda —
 ## foi assim que ferramenta chegou até aqui sem ícone.
-@export var sprite: String = ""
+##
+## `@export_file` é só um hint de editor: o valor continua `String` e `sim/`
+## continua sem conhecer `Texture2D`. O que ele muda é o inspector, que passa a
+## aceitar o PNG **arrastado do FileSystem** em vez de exigir o caminho
+## digitado à mão — errar uma letra aqui é o jeito mais comum de o sprite não
+## aparecer no jogo.
+@export_file("*.png") var sprite: String = ""

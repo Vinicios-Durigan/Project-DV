@@ -30,6 +30,26 @@ static func nova(onde: Rect2i, como_se_chama: String, de_que_tipo: DestinoArte.T
 	return peca
 
 
+## Duas ou mais peças viram uma só, na área que cobre todas.
+##
+## O detector separa por vizinhança, e há desenho que ele não tem como saber que
+## é um item só: um grão partido em dois pedaços com um vão no meio, uma
+## ferramenta cujo cabo se afasta da lâmina. Aumentar o raio até colar esses
+## dois cola também os vizinhos — então a junção é manual, e é o artista quem
+## decide olhando.
+##
+## Fica com o nome e o tipo da primeira: é a de cima e à esquerda, a que o
+## artista já viu na lista.
+static func juntadas(pecas: Array[PecaRecortada]) -> PecaRecortada:
+	if pecas.is_empty():
+		return null
+
+	var unida: Rect2i = pecas[0].area
+	for peca in pecas:
+		unida = unida.merge(peca.area)
+	return nova(unida, pecas[0].nome, pecas[0].tipo)
+
+
 func define_imagem(pronta: Image) -> void:
 	imagem = pronta
 	textura = ImageTexture.create_from_image(pronta)

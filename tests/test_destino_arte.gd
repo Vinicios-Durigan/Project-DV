@@ -137,3 +137,53 @@ func test_a_lista_de_tipos_aceitos_cobre_todos_os_reais() -> void:
 				achou = true
 				break
 		assert_true(achou, "%s: falta na mensagem de ajuda" % DestinoArte.rotulo(tipo))
+
+
+# --- nomes em lote -------------------------------------------------------
+
+## As folhas do projeto vêm em duas ordens. Adivinhar erraria metade das vezes,
+## e nome errado só aparece semanas depois com o sprite trocado no jogo.
+func test_lote_de_cultura_com_a_semente_primeiro() -> void:
+	assert_eq(Array(DestinoArte.nomes_em_lote("abobora", 6,
+		DestinoArte.Padrao.CULTURA_SEMENTE_PRIMEIRO)), [
+		"abobora_semente", "abobora_estagio_0", "abobora_estagio_1",
+		"abobora_estagio_2", "abobora_estagio_3", "abobora_fruto",
+	])
+
+func test_lote_de_cultura_com_a_semente_no_fim() -> void:
+	assert_eq(Array(DestinoArte.nomes_em_lote("trigo", 6,
+		DestinoArte.Padrao.CULTURA_SEMENTE_NO_FIM)), [
+		"trigo_estagio_0", "trigo_estagio_1", "trigo_estagio_2", "trigo_estagio_3",
+		"trigo_semente", "trigo_fruto",
+	])
+
+func test_lote_numerado_para_o_que_nao_e_cultura() -> void:
+	assert_eq(Array(DestinoArte.nomes_em_lote("cerca", 3, DestinoArte.Padrao.NUMERADO)),
+		["cerca_0", "cerca_1", "cerca_2"])
+
+func test_lote_numerado_de_um_so_nao_ganha_sufixo() -> void:
+	assert_eq(Array(DestinoArte.nomes_em_lote("regador", 1, DestinoArte.Padrao.NUMERADO)),
+		["regador"], "um sprite sozinho não precisa de número")
+
+func test_lote_normaliza_o_nome_base() -> void:
+	assert_eq(DestinoArte.nomes_em_lote("Abóbora", 2,
+		DestinoArte.Padrao.CULTURA_SEMENTE_PRIMEIRO)[0], "abobora_semente")
+
+func test_lote_sem_base_ou_sem_pecas_devolve_vazio() -> void:
+	assert_eq(DestinoArte.nomes_em_lote("", 4, DestinoArte.Padrao.NUMERADO).size(), 0)
+	assert_eq(DestinoArte.nomes_em_lote("abobora", 0, DestinoArte.Padrao.NUMERADO).size(), 0)
+
+## Cultura com poucos sprites não inventa estágio: sobra semente e fruto.
+func test_lote_de_cultura_com_dois_sprites() -> void:
+	assert_eq(Array(DestinoArte.nomes_em_lote("morango", 2,
+		DestinoArte.Padrao.CULTURA_SEMENTE_PRIMEIRO)), ["morango_semente", "morango_fruto"])
+
+## Todo nome de um lote é diferente do outro — é o ponto: 25 arquivos que se
+## sobrescreveriam viram 25 arquivos de verdade.
+func test_nenhum_nome_do_lote_se_repete() -> void:
+	for padrao in DestinoArte.padroes_em_ordem():
+		var nomes: PackedStringArray = DestinoArte.nomes_em_lote("abobora", 6, padrao)
+		var vistos: Dictionary = {}
+		for nome in nomes:
+			vistos[nome] = true
+		assert_eq(vistos.size(), nomes.size(), DestinoArte.rotulo_do_padrao(padrao))

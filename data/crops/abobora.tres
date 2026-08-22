@@ -1,18 +1,15 @@
-[gd_resource type="Resource" script_class="CropDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="CropDef" format=3 uid="uid://brtwc08jycwy2"]
 
-[ext_resource type="Script" path="res://sim/crops/crop_def.gd" id="1_crop_def"]
+[ext_resource type="Script" uid="uid://dgfx0rkuontmd" path="res://sim/crops/crop_def.gd" id="1_crop_def"]
 
 [resource]
 script = ExtResource("1_crop_def")
 id = "abobora"
 nome = "Abóbora"
 dias_por_estagio = Array[int]([4, 4, 5])
-colheitas_infinitas = false
-rende_por_colheita = 1
 preco_semente = 80
 item_semente = "semente_abobora"
 item_colheita = "abobora"
-bloqueia_movimento = false
-sprites_estagios = Array[String](["res://assets/crops/abobora/abobora_estagio_0.png", "res://assets/crops/abobora/abobora_estagio_1.png", "res://assets/crops/abobora/abobora_estagio_2.png", "res://assets/crops/abobora/abobora_estagio_3.png"])
-sprite_semente = "res://assets/crops/abobora/abobora_semente.png"
-sprite_fruto = "res://assets/crops/abobora/abobora_fruto.png"
+sprites_estagios = Array[String](["uid://b4cng7uqc7xj0", "uid://cevxdpg2ynx0v", "uid://i73schwj0i87", "res://assets/crops/abobora/abobora_estagio_3.png"])
+sprite_semente = "uid://c2m07w2u46i3s"
+sprite_fruto = "uid://c1f7atpou6cth"

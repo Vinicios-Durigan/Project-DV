@@ -1,10 +1,9 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://b38hc0bqq7pl7"]
 
-[ext_resource type="Script" path="res://sim/items/item_def.gd" id="1_item_def"]
+[ext_resource type="Script" uid="uid://dloaoibdykfbb" path="res://sim/items/item_def.gd" id="1_item_def"]
 
 [resource]
 script = ExtResource("1_item_def")
 id = "semente_trigo"
 nome = "Semente de Trigo"
 preco_venda = 7
-stack_max = 999

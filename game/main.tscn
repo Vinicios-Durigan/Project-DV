@@ -1,14 +1,14 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://8wc1mk1ewq26"]
 
-[ext_resource type="Script" path="res://game/sim_bridge.gd" id="1_bridge"]
-[ext_resource type="Script" path="res://game/save_gateway.gd" id="2_save"]
-[ext_resource type="Script" path="res://game/fullscreen_toggle.gd" id="3_fullscreen"]
+[ext_resource type="Script" uid="uid://c48w0nmsyx8ia" path="res://game/sim_bridge.gd" id="1_bridge"]
+[ext_resource type="Script" uid="uid://bm7rfpksvu0yd" path="res://game/save_gateway.gd" id="2_save"]
+[ext_resource type="Script" uid="uid://qrjqh5l10a52" path="res://game/fullscreen_toggle.gd" id="3_fullscreen"]
 
-[node name="Main" type="Node"]
+[node name="Main" type="Node" unique_id=1950805103]
 script = ExtResource("1_bridge")
 
-[node name="SaveGateway" type="Node" parent="."]
+[node name="SaveGateway" type="Node" parent="." unique_id=1121097955]
 script = ExtResource("2_save")
 
-[node name="FullscreenToggle" type="Node" parent="."]
+[node name="FullscreenToggle" type="Node" parent="." unique_id=2115417557]
 script = ExtResource("3_fullscreen")

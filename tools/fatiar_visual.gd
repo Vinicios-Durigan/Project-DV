@@ -84,7 +84,14 @@ var _cores: HSlider
 var _lista: VBoxContainer
 var _campos_de_nome: Array[LineEdit] = []
 var _campos_de_tipo: Array[OptionButton] = []
+var _marcas: Array[CheckBox] = []
+var _botao_juntar: Button
+var _botao_remover: Button
+var _botao_nomear: Button
+var _nome_base: LineEdit
+var _padrao_de_nome: OptionButton
 var _miniaturas: Array[TextureRect] = []
+var _medidas: Array[Label] = []
 var _botao_gravar: Button
 var _resumo: RichTextLabel
 var _rotulo_zoom: Label
@@ -450,12 +457,66 @@ func _monta_coluna_da_lista() -> Control:
 	titulo.add_theme_font_size_override("font_size", 14)
 	cabecalho.add_child(titulo)
 
-	var convencao: Button = Button.new()
-	convencao.text = "Nomear cultura pela convenção"
-	convencao.tooltip_text = ("Escreve estágios, semente e fruto nos sprites marcados como"
-		+ " Cultura, na ordem de leitura, usando o nome do campo Cultura (padrão).")
-	convencao.pressed.connect(_preenche_nomes_de_cultura)
-	cabecalho.add_child(convencao)
+	# Nomear 25 sprites um a um é onde o trabalho realmente dói — e digitar o
+	# mesmo nome em todos, que é o atalho natural, produz 25 arquivos que se
+	# sobrescrevem. O lote resolve os dois: um nome base, e os sufixos saem
+	# certos na ordem de leitura.
+	_nome_base = LineEdit.new()
+	_nome_base.placeholder_text = "abobora"
+	_nome_base.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cabecalho.add_child(_rotulo("Nome base do lote"))
+	cabecalho.add_child(_nome_base)
+
+	_padrao_de_nome = OptionButton.new()
+	for padrao in DestinoArte.padroes_em_ordem():
+		_padrao_de_nome.add_item(DestinoArte.rotulo_do_padrao(padrao), padrao)
+	_padrao_de_nome.tooltip_text = ("A ordem de leitura da folha decide. Olhe os números na"
+		+ " imagem: o pacote de semente vem antes ou depois dos estágios?")
+	cabecalho.add_child(_padrao_de_nome)
+
+	_botao_nomear = Button.new()
+	_botao_nomear.text = "Nomear marcados"
+	_botao_nomear.pressed.connect(_nomeia_marcados)
+	cabecalho.add_child(_botao_nomear)
+
+	var marcacao: HBoxContainer = HBoxContainer.new()
+	for texto in ["Marcar todos", "Limpar marcas"]:
+		var botao: Button = Button.new()
+		botao.text = texto
+		botao.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		botao.pressed.connect(_marca_todos.bind(texto == "Marcar todos"))
+		marcacao.add_child(botao)
+	cabecalho.add_child(marcacao)
+
+	# Há desenho que o detector não tem como saber que é um item só — um grão
+	# partido, um cabo afastado da lâmina. Aumentar o raio até colar esses dois
+	# cola também os vizinhos, então a decisão é manual.
+	var acoes: HBoxContainer = HBoxContainer.new()
+	_botao_juntar = Button.new()
+	_botao_juntar.text = "Juntar marcados"
+	_botao_juntar.tooltip_text = ("Marque dois ou mais quadradinhos e junte: eles viram um"
+		+ " sprite só, na área que cobre todos.")
+	_botao_juntar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_botao_juntar.pressed.connect(_junta_marcados)
+	acoes.add_child(_botao_juntar)
+
+	_botao_remover = Button.new()
+	_botao_remover.text = "Remover"
+	_botao_remover.tooltip_text = "Descarta os marcados — para sujeira que virou recorte."
+	_botao_remover.pressed.connect(_remove_marcados)
+	acoes.add_child(_botao_remover)
+	cabecalho.add_child(acoes)
+
+	var refazer: Button = Button.new()
+	refazer.text = "Refazer a lista do zero"
+	refazer.tooltip_text = "Desfaz junções e remoções, voltando ao que o detector achou."
+	refazer.pressed.connect(_reprocessa)
+	cabecalho.add_child(refazer)
+
+	var dica: Label = _rotulo("Junções e nomes se perdem se você mexer no corte (seção 4).\n"
+		+ "Acerte o corte primeiro, depois a lista.")
+	dica.modulate = Color(1, 1, 1, 0.55)
+	cabecalho.add_child(dica)
 
 	var rolagem: ScrollContainer = ScrollContainer.new()
 	rolagem.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -620,6 +681,7 @@ func _reprocessa() -> void:
 	_textura = ImageTexture.create_from_image(_fatiador.imagem())
 	_refaz_as_imagens()
 	_remonta_a_lista()
+	_atualiza_rotulo_de_zoom()
 
 
 ## O acabamento que a janela está pedindo agora — o mesmo objeto que a linha de
@@ -645,6 +707,10 @@ func _refaz_as_imagens() -> void:
 			peca.define_imagem(_fatiador.recorte(peca.area, acabamento))
 	for i in mini(_miniaturas.size(), _pecas.size()):
 		_miniaturas[i].texture = _pecas[i].textura
+	for i in mini(_medidas.size(), _pecas.size()):
+		_medidas[i].text = _medida_da_peca(_pecas[i])
+		_medidas[i].modulate = (Color(1, 1, 1, 0.5)
+			if not _pecas[i].passou_da_celula(int(_celula.value)) else COR_ALERTA)
 	_tela.queue_redraw()
 	_atualiza_resumo()
 
@@ -658,26 +724,36 @@ func _aplica_tipo_padrao_a_todos() -> void:
 	_atualiza_resumo()
 
 
-## Cultura é a única com convenção fechada, então é a única que dá para nomear
-## sozinho. Nomeia só as peças marcadas como Cultura — o pão e o regador na
-## mesma folha ficam com o nome que o artista deu.
-func _preenche_nomes_de_cultura() -> void:
-	var de_cultura: Array[int] = []
-	for i in _pecas.size():
-		if _pecas[i].tipo == DestinoArte.Tipo.CULTURA:
-			de_cultura.append(i)
+## Nomeia de uma vez todos os sprites marcados, na ordem de leitura.
+##
+## É o irmão do "Juntar marcados": mesma marcação, outra ação. Marcar os seis
+## quadrinhos da abóbora e digitar `abobora` produz `abobora_semente`,
+## `abobora_estagio_0` até `_3` e `abobora_fruto` — em vez de seis arquivos
+## `abobora` que se sobrescreveriam.
+func _nomeia_marcados() -> void:
+	var indices: Array[int] = _marcados()
+	if indices.is_empty():
+		return
 
-	var nomes: PackedStringArray = DestinoArte.nomes_sugeridos(
-		DestinoArte.Tipo.CULTURA, _slug.text, de_cultura.size())
+	var padrao: DestinoArte.Padrao = _padrao_de_nome.get_selected_id() as DestinoArte.Padrao
+	var nomes: PackedStringArray = DestinoArte.nomes_em_lote(
+		_nome_base.text, indices.size(), padrao)
 	if nomes.is_empty():
 		return
 
-	for ordem in de_cultura.size():
-		var i: int = de_cultura[ordem]
+	for ordem in indices.size():
+		var i: int = indices[ordem]
 		_pecas[i].nome = nomes[ordem]
 		if i < _campos_de_nome.size():
 			_campos_de_nome[i].text = nomes[ordem]
 	_atualiza_resumo()
+
+
+## Marcar 25 quadradinhos um a um seria pior que o problema que o lote resolve.
+func _marca_todos(ligado: bool) -> void:
+	for marca in _marcas:
+		marca.set_pressed_no_signal(ligado)
+	_atualiza_acoes_da_lista()
 
 
 # --- a lista -------------------------------------------------------------
@@ -688,9 +764,12 @@ func _remonta_a_lista() -> void:
 	_campos_de_nome = []
 	_campos_de_tipo = []
 	_miniaturas = []
+	_medidas = []
+	_marcas = []
 
 	for i in _pecas.size():
 		_lista.add_child(_monta_linha_da_lista(i))
+	_atualiza_acoes_da_lista()
 	_atualiza_resumo()
 
 
@@ -706,9 +785,16 @@ func _monta_linha_da_lista(indice: int) -> Control:
 	caixa.add_child(margem)
 
 	var topo: HBoxContainer = HBoxContainer.new()
+
+	var marca: CheckBox = CheckBox.new()
+	marca.tooltip_text = "Marcar para juntar ou remover"
+	marca.toggled.connect(func(_v: bool) -> void: _atualiza_acoes_da_lista())
+	topo.add_child(marca)
+	_marcas.append(marca)
+
 	var numero: Label = Label.new()
 	numero.text = str(indice)
-	numero.custom_minimum_size = Vector2(22, 0)
+	numero.custom_minimum_size = Vector2(20, 0)
 	numero.modulate = Color(1, 1, 1, 0.5)
 	topo.add_child(numero)
 
@@ -733,6 +819,11 @@ func _monta_linha_da_lista(indice: int) -> Control:
 	_campos_de_nome.append(nome)
 	dentro.add_child(topo)
 
+	var medida: Label = _rotulo(_medida_da_peca(peca))
+	medida.custom_minimum_size = Vector2(74, 0)
+	topo.add_child(medida)
+	_medidas.append(medida)
+
 	var tipo: OptionButton = OptionButton.new()
 	for opcao in DestinoArte.tipos_em_ordem():
 		tipo.add_item(DestinoArte.rotulo(opcao), opcao)
@@ -745,9 +836,87 @@ func _monta_linha_da_lista(indice: int) -> Control:
 	return caixa
 
 
+## O tamanho final ao lado do nome: a miniatura mostra o desenho, mas nao diz
+## se ele saiu 16×16 ou 31×22. É a conferência mais rápida da lista.
+func _medida_da_peca(peca: PecaRecortada) -> String:
+	if peca.imagem == null:
+		return ""
+	return "%d×%d" % [peca.imagem.get_width(), peca.imagem.get_height()]
+
+
 func _escolhe(indice: int) -> void:
 	_escolhido = indice
 	_tela.queue_redraw()
+
+
+func _marcados() -> Array[int]:
+	var indices: Array[int] = []
+	for i in mini(_marcas.size(), _pecas.size()):
+		if _marcas[i].button_pressed:
+			indices.append(i)
+	return indices
+
+
+func _atualiza_acoes_da_lista() -> void:
+	var quantos: int = _marcados().size()
+	_botao_juntar.disabled = quantos < 2
+	_botao_remover.disabled = quantos < 1
+	_botao_nomear.disabled = quantos < 1
+
+
+## Dois recortes que são o mesmo desenho viram um só. O detector separa por
+## vizinhança e não tem como saber que aqueles dois pedaços são um grão partido
+## — e subir o raio até colá-los cola também os vizinhos.
+##
+## A área nova cobre as duas, então o vão entre elas entra junto: é transparente,
+## e some no recorte.
+func _junta_marcados() -> void:
+	var indices: Array[int] = _marcados()
+	if indices.size() < 2:
+		return
+
+	var escolhidas: Array[PecaRecortada] = []
+	for i in indices:
+		escolhidas.append(_pecas[i])
+
+	var restantes: Array[PecaRecortada] = []
+	for i in _pecas.size():
+		if not indices.has(i):
+			restantes.append(_pecas[i])
+	restantes.append(PecaRecortada.juntadas(escolhidas))
+
+	_troca_as_pecas(restantes)
+
+
+func _remove_marcados() -> void:
+	var indices: Array[int] = _marcados()
+	if indices.is_empty():
+		return
+
+	var restantes: Array[PecaRecortada] = []
+	for i in _pecas.size():
+		if not indices.has(i):
+			restantes.append(_pecas[i])
+	_troca_as_pecas(restantes)
+
+
+## Reordena em ordem de leitura depois de mexer na lista: o número que aparece
+## na folha tem de continuar batendo com a posição na lista, senão a junção
+## seguinte é feita às cegas.
+func _troca_as_pecas(novas: Array[PecaRecortada]) -> void:
+	var por_area: Dictionary = {}
+	var areas: Array[Rect2i] = []
+	for peca in novas:
+		por_area[peca.area] = peca
+		areas.append(peca.area)
+
+	_pecas = []
+	for area in Fatiador.em_ordem_de_leitura(areas):
+		_pecas.append(por_area[area])
+
+	_escolhido = -1
+	_refaz_as_imagens()
+	_remonta_a_lista()
 
 
 # --- zoom e arrasto ------------------------------------------------------

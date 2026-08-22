@@ -106,21 +106,6 @@ func test_o_tipo_padrao_se_aplica_a_todos_de_uma_vez() -> void:
 		assert_eq(peca.tipo, DestinoArte.Tipo.OBJETO)
 
 
-## Só as peças marcadas como Cultura são nomeadas: o pão e o regador na mesma
-## folha ficam com o nome que o artista deu.
-func test_nomear_pela_convencao_so_toca_nas_culturas() -> void:
-	_com_folha()
-	for i in 3:
-		_janela._pecas[i].tipo = DestinoArte.Tipo.CULTURA
-	_janela._pecas[3].tipo = DestinoArte.Tipo.ITEM
-	_janela._pecas[3].nome = "regador"
-	_janela._slug.text = "cenoura"
-	_janela._preenche_nomes_de_cultura()
-
-	assert_eq(_janela._pecas[0].nome, "cenoura_estagio_0")
-	assert_eq(_janela._pecas[1].nome, "cenoura_semente")
-	assert_eq(_janela._pecas[2].nome, "cenoura_fruto")
-	assert_eq(_janela._pecas[3].nome, "regador", "o item não foi renomeado de carona")
 
 
 # --- o que impede de gravar ----------------------------------------------
@@ -261,3 +246,151 @@ func test_o_acabamento_da_janela_e_o_mesmo_do_preset() -> void:
 	assert_eq(atual.alfa_corte, referencia.alfa_corte)
 	assert_eq(atual.cores, referencia.cores)
 	assert_eq(atual.celula, referencia.celula)
+
+
+# --- juntar e remover na lista -------------------------------------------
+
+func _marca(indices: Array) -> void:
+	for i in indices:
+		_janela._marcas[i].button_pressed = true
+
+## O caso real: os recortes 15 e 16 da folha do projeto são um grão só, partido
+## em dois pedaços.
+func test_juntar_dois_recortes_vira_um_sprite_so() -> void:
+	_com_folha()
+	var antes: int = _janela._pecas.size()
+	var area_a: Rect2i = _janela._pecas[0].area
+	var area_b: Rect2i = _janela._pecas[1].area
+	_marca([0, 1])
+	_janela._junta_marcados()
+
+	assert_eq(_janela._pecas.size(), antes - 1, "dois viraram um")
+	var esperada: Rect2i = area_a.merge(area_b)
+	var achou: bool = false
+	for peca in _janela._pecas:
+		if peca.area == esperada:
+			achou = true
+	assert_true(achou, "e a área nova cobre as duas")
+
+func test_o_botao_de_juntar_so_liga_com_dois_marcados() -> void:
+	_com_folha()
+	assert_true(_janela._botao_juntar.disabled, "nada marcado, nada a juntar")
+
+	_marca([0])
+	assert_true(_janela._botao_juntar.disabled, "um só não se junta a nada")
+	assert_false(_janela._botao_remover.disabled, "mas dá para remover")
+
+	_marca([1])
+	assert_false(_janela._botao_juntar.disabled)
+
+func test_remover_descarta_o_marcado() -> void:
+	_com_folha()
+	var antes: int = _janela._pecas.size()
+	var area: Rect2i = _janela._pecas[1].area
+	_marca([1])
+	_janela._remove_marcados()
+
+	assert_eq(_janela._pecas.size(), antes - 1)
+	for peca in _janela._pecas:
+		assert_ne(peca.area, area, "o removido não voltou")
+
+## Depois de mexer na lista os números têm de continuar em ordem de leitura,
+## senão a junção seguinte é feita às cegas.
+func test_a_lista_volta_para_a_ordem_de_leitura_depois_de_juntar() -> void:
+	_com_folha()
+	_marca([0, 3])
+	_janela._junta_marcados()
+
+	var anterior: Rect2i = _janela._pecas[0].area
+	for i in range(1, _janela._pecas.size()):
+		var atual: Rect2i = _janela._pecas[i].area
+		assert_true(atual.position.y >= anterior.position.y
+			or atual.position.x >= anterior.position.x, "ordem de leitura mantida")
+		anterior = atual
+
+func test_a_juncao_reaproveita_o_nome_e_refaz_a_imagem() -> void:
+	_com_folha()
+	_janela._pecas[0].nome = "semente_trigo"
+	_marca([0, 1])
+	_janela._junta_marcados()
+
+	var juntada: PecaRecortada = null
+	for peca in _janela._pecas:
+		if peca.nome == "semente_trigo":
+			juntada = peca
+	assert_not_null(juntada, "o nome sobreviveu à junção")
+	assert_not_null(juntada.imagem, "e a imagem foi refeita na área nova")
+
+## Refazer é a saída para desfazer junções e remoções sem reabrir o arquivo.
+func test_refazer_a_lista_volta_ao_que_o_detector_achou() -> void:
+	_com_folha()
+	var antes: int = _janela._pecas.size()
+	_marca([0, 1])
+	_janela._junta_marcados()
+	assert_eq(_janela._pecas.size(), antes - 1)
+
+	_janela._reprocessa()
+	assert_eq(_janela._pecas.size(), antes, "voltou tudo")
+
+
+# --- nomear em lote ------------------------------------------------------
+
+## O trabalho real: 25 sprites de cultura na folha. Nomear um a um dói, e
+## digitar o mesmo nome em todos — o atalho natural — produz 25 arquivos que se
+## sobrescrevem. O lote é o irmão do "Juntar marcados": mesma marcação, outra
+## ação.
+func test_nomear_marcados_distribui_os_sufixos_na_ordem() -> void:
+	_com_folha()
+	_marca([0, 1, 2, 3])
+	_janela._nome_base.text = "abobora"
+	_janela._padrao_de_nome.select(_janela._padrao_de_nome.get_item_index(
+		DestinoArte.Padrao.CULTURA_SEMENTE_PRIMEIRO))
+	_janela._nomeia_marcados()
+
+	assert_eq(_janela._pecas[0].nome, "abobora_semente", "o pacote vem primeiro nesta folha")
+	assert_eq(_janela._pecas[1].nome, "abobora_estagio_0")
+	assert_eq(_janela._pecas[2].nome, "abobora_estagio_1")
+	assert_eq(_janela._pecas[3].nome, "abobora_fruto")
+
+func test_nomear_em_lote_resolve_o_nome_repetido() -> void:
+	_com_folha()
+	for peca in _janela._pecas:
+		peca.nome = "abobora"
+	_janela._atualiza_resumo()
+	assert_true(_janela._botao_gravar.disabled, "quatro 'abobora' na mesma pasta")
+
+	_marca([0, 1, 2, 3])
+	for peca in _janela._pecas:
+		peca.tipo = DestinoArte.Tipo.CULTURA
+	_janela._nome_base.text = "abobora"
+	_janela._nomeia_marcados()
+	assert_false(_janela._botao_gravar.disabled, "com os sufixos, cada um é um arquivo")
+
+## Nomear só toca no que está marcado — o pão e o regador da mesma folha ficam
+## com o nome que o artista deu.
+func test_nomear_em_lote_nao_toca_no_que_nao_esta_marcado() -> void:
+	_com_folha()
+	_janela._pecas[3].nome = "regador"
+	_marca([0, 1])
+	_janela._nome_base.text = "abobora"
+	_janela._nomeia_marcados()
+
+	assert_eq(_janela._pecas[3].nome, "regador")
+
+func test_nomear_sem_nome_base_nao_faz_nada() -> void:
+	_com_folha()
+	_janela._pecas[0].nome = "regador"
+	_marca([0])
+	_janela._nome_base.text = "   "
+	_janela._nomeia_marcados()
+	assert_eq(_janela._pecas[0].nome, "regador", "sem base não há o que aplicar")
+
+func test_marcar_todos_e_limpar() -> void:
+	_com_folha()
+	_janela._marca_todos(true)
+	assert_eq(_janela._marcados().size(), _janela._pecas.size(), "marcar 25 um a um seria pior")
+	assert_false(_janela._botao_nomear.disabled)
+
+	_janela._marca_todos(false)
+	assert_eq(_janela._marcados().size(), 0)
+	assert_true(_janela._botao_nomear.disabled)

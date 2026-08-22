@@ -1,10 +1,10 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://cff2gu5g5dsrm"]
 
-[ext_resource type="Script" path="res://sim/items/item_def.gd" id="1_item_def"]
+[ext_resource type="Script" uid="uid://dloaoibdykfbb" path="res://sim/items/item_def.gd" id="1_item_def"]
 
 [resource]
 script = ExtResource("1_item_def")
 id = "rabanete"
 nome = "Rabanete"
 preco_venda = 35
-stack_max = 999
+sprite = "uid://daiphoo51sm4r"

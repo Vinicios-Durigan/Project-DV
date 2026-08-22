@@ -134,12 +134,33 @@ func test_sprite_nasce_vazio_e_nao_quebra_tres_antigo() -> void:
 ## Sprite preenchido aponta para arquivo que existe. Enquanto a arte não entra
 ## todos estão vazios e o teste passa de graça — quando entrar, ele é quem
 ## percebe caminho errado no `.tres`.
+##
+## Aceita `res://` e `uid://`: arrastar o PNG do FileSystem — que é o jeito que
+## o `@export_file` habilitou e o que o artista de fato faz — grava um UID, não
+## um caminho. Exigir `res://` reprovaria justamente o fluxo certo.
 func test_sprite_preenchido_aponta_para_arquivo_existente() -> void:
 	var quebrados: Array[String] = []
 	for item_id in _items.ids():
 		var caminho: String = _items.get_def(item_id).sprite
 		if caminho.is_empty():
 			continue
-		if not caminho.begins_with("res://") or not ResourceLoader.exists(caminho):
+		var forma_valida: bool = caminho.begins_with("res://") or caminho.begins_with("uid://")
+		if not forma_valida or not ResourceLoader.exists(caminho):
 			quebrados.append("%s -> %s" % [item_id, caminho])
 	assert_eq(quebrados, [] as Array[String], "sprite apontando para arquivo que não existe")
+
+## O campo de sprite é `String`, e não `Texture2D`, porque `sim/` não conhece
+## tipo de engine. Mas `@export_file` faz o inspector aceitar o PNG **arrastado
+## do FileSystem**, em vez de exigir o caminho digitado à mão.
+##
+## Digitar caminho é o jeito mais comum de o sprite não aparecer no jogo — uma
+## letra errada e o erro só se vê rodando. Se alguém trocar o `@export_file` por
+## um `@export` simples num refactor, o artista volta a digitar sem perceber.
+func test_o_campo_de_sprite_aceita_arrastar_do_filesystem() -> void:
+	for prop: Dictionary in ItemDef.new().get_property_list():
+		if String(prop["name"]) == "sprite":
+			assert_eq(prop["hint"], PROPERTY_HINT_FILE, "sprite: seletor de arquivo, não texto solto")
+			assert_eq(prop["type"], TYPE_STRING, "e o valor continua String — sim/ sem engine")
+			assert_string_contains(String(prop["hint_string"]), "png")
+			return
+	fail_test("ItemDef não tem mais o campo sprite")
