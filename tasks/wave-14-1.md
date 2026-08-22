@@ -69,7 +69,7 @@ playtest disso em "Em aberto".
 
 ## Tarefas
 
-### 14.1.1 — Carga no slot
+### 14.1.1 — Carga no slot ✅
 Cria: `tests/test_carga_slot.gd` (edita `sim/items/inventory_state.gd` e
 `sim/items/item_def.gd`)
 Depende de: 14.4
@@ -78,7 +78,7 @@ verdadeiro para slot vazio sem carga, e `ItemDef.capacidade_carga` com default
 0. O teste carrega um save da versão anterior e prova que ele abre com carga
 zerada, sem migração.
 
-### 14.1.2 — O gasto e a recusa
+### 14.1.2 — O gasto e a recusa ✅
 Cria: `tests/test_regar_sem_agua.gd` (edita `sim/items/inventory_system.gd`)
 Depende de: 14.1.1
 Faz: `InventorySystem.handle` reconhece `WaterPlotAction` — desconta 1 de carga
@@ -86,7 +86,7 @@ do slot na mão, ou marca `rejeitada` e emite `ActionRejectedEvent` com motivo
 `sem_agua`. Item sem `capacidade_carga` na mão não gasta nada e não recusa: quem
 rega com a mão vazia já era `null` no resolvedor.
 
-### 14.1.3 — Encher
+### 14.1.3 — Encher ✅
 Cria: `sim/items/encher_regador_action.gd`,
 `sim/items/regador_enchido_event.gd`, `tests/test_encher_regador.gd`
 Depende de: 14.1.2
@@ -95,7 +95,7 @@ devolve `EncherRegadorAction`; o `InventorySystem` enche até
 `capacidade_carga` e emite `RegadorEnchidoEvent`. Encher regador já cheio é
 `null`, não recusa.
 
-### 14.1.4 — A água na tela
+### 14.1.4 — A água na tela ✅
 Cria: `tests/test_medidor_carga.gd` (edita `game/dev/mira_ferramentas.gd` e
 `game/dev/painel_mochila.gd`)
 Depende de: 14.1.3
@@ -103,6 +103,29 @@ Faz: a carga aparece na mira e no slot da mão, atualizada por
 `RegadorEnchidoEvent` e `PlotWateredEvent`. Reusa os rótulos em vez de recriar
 nós — o `painel_mochila.gd` já carrega essa pendência desde a 12.1 e esta wave
 não pode aumentá-la.
+
+## O que saiu diferente do planejado
+
+- **Ninguém criava o poço.** Nenhuma das quatro tarefas põe água no mapa, e sem
+  um tile `agua` a mecânica inteira fica inalcançável. Entrou como
+  `SistemaTerreno.POCO`, em `(7,5)` — **desenhado, não sorteado**, e antes das
+  manchas, para que nenhuma delas caia por cima. Ele ocupa um tile cultivável de
+  propósito: a água custa chão, como tudo neste mapa.
+- **`Slot` não tem `is_default()`, tem `vazio()`.** A tarefa 14.1.1 citou o nome
+  errado; o comportamento pedido — slot vazio continuar vazio com carga — está
+  coberto pelo teste.
+- **A mira ganhou `rotulo()` público.** O texto do retículo sai por
+  `draw_string` e não deixa nó nenhum para o teste inspecionar. Sem essa função,
+  a única forma de testar o medidor seria não testá-lo.
+- **A pendência do `painel_mochila` diminuiu em vez de só não crescer.** O
+  `_on_sim_event` agora ignora `MinuteTickedEvent` — uma linha que derruba a
+  remontagem de ~3.600 por minuto de jogo em ×60 para as poucas que uma ação de
+  verdade causa. O conserto de verdade (reusar os quadrados) continua por fazer.
+- **`docs/GAMEPLAY.md §10` foi atualizado.** Um teste prende o formato do bloco
+  `inventory` contra o exemplo daquele documento, e `carga` mudou o formato.
+  Aproveitei para incluir os cinco blocos que o exemplo não tinha (`locais`,
+  `cidade`, `contratos`, `terreno`) — ele estava parado na wave 05.
+- **`data/items/regador.tres`** ganhou `capacidade_carga = 15`.
 
 ## Em aberto
 

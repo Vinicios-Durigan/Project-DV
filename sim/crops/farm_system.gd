@@ -47,10 +47,34 @@ func handle(action: SimAction) -> Array[SimEvent]:
 
 ## O dia virou: quem estava regada cresce, a rega reseta e, no fim da estação,
 ## o que ficou no chão morre.
+##
+## E o tile que fechou perde o arado: quem cobre é o `SistemaTerreno`, que não
+## escreve aqui — ele avisa, e o dono do plot reage.
 func react(event: SimEvent) -> Array[SimEvent]:
-	if not event is DayEndedEvent:
+	if event is DayEndedEvent:
+		return _advance_day(event as DayEndedEvent)
+	if event is TerrenoMudouEvent:
+		return _perde_o_arado(event as TerrenoMudouEvent)
+	return []
+
+## O terreno fechou por cima de um tile arado: o preparo se perde.
+##
+## **Não emite evento.** É a única mudança de estado deste arquivo que não emite,
+## e o motivo é que ela não é um fato novo: o `TerrenoMudouEvent` que a causou já
+## conta a história inteira para quem escuta — um tile que deixou de ser livre
+## não tem mais como estar arado, e a tela já se redesenha por causa dele. Um
+## `PlotDesaradoEvent` seria a mesma frase dita duas vezes, na mesma cascata.
+##
+## Cultura em pé não é coberta (o terreno nem tenta), então aqui não há caso a
+## tratar: se chegou, é tile vazio.
+func _perde_o_arado(terreno: TerrenoMudouEvent) -> Array[SimEvent]:
+	if terreno.para == EstadoTerreno.LIVRE:
 		return []
-	return _advance_day(event as DayEndedEvent)
+	var plot := _state.peek_plot(terreno.x, terreno.y)
+	if not plot.arada or plot.tem_cultura():
+		return []
+	_state.get_plot(terreno.x, terreno.y).arada = false
+	return []
 
 # --- Consultas para o retículo de game/ (leitura pura, não criam plot) ---
 

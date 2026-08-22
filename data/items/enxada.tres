@@ -9,3 +9,4 @@ nome = "Enxada"
 stack_max = 1
 acao_de_uso = "arar"
 sprite = "uid://bvjnw0kpac0s8"
+alvos_de_limpeza = Array[String](["mato"])

@@ -13,9 +13,12 @@ extends RefCounted
 ##    wave 11.2: tira um passo do laço mais repetido do jogo — não se troca de
 ##    item para colher — e combina com o §6, onde colher não tem swing.
 ##    Rega continua funcionando em cultura **verde**, que é quando ela importa.
-## 2. **Ferramenta na mão** faz o que o `ItemDef.acao_de_uso` dela declara.
-## 3. **Semente na mão** planta a cultura daquela semente.
-## 4. Nada disso → `null`, e `game/` não despacha nada.
+## 2. **O que cobre o tile sai primeiro**, se a ferramenta na mão der conta dele
+##    (wave 14). Enquanto houver mato ali, arar não é o que o jogador quis
+##    dizer — e é isso que faz a enxada capinar sem ganhar tecla nova.
+## 3. **Ferramenta na mão** faz o que o `ItemDef.acao_de_uso` dela declara.
+## 4. **Semente na mão** planta a cultura daquela semente.
+## 5. Nada disso → `null`, e `game/` não despacha nada.
 ##
 ## ## Por que devolve a ação em vez de executá-la
 ##
@@ -39,14 +42,20 @@ var _inventario: InventoryState
 var _farm: FarmState
 var _items: ItemCatalog
 var _crops: CropCatalog
+var _terreno: EstadoTerreno
 
 
+## O terreno é o quarto state lido, e entrou por último de propósito: sem ele
+## injetado o mundo é todo livre, e tudo o que a wave 11.2 decidiu continua
+## valendo sem saber que existe mato.
 func _init(inventario: InventoryState = null, farm: FarmState = null,
-		items: ItemCatalog = null, crops: CropCatalog = null) -> void:
+		items: ItemCatalog = null, crops: CropCatalog = null,
+		terreno: EstadoTerreno = null) -> void:
 	_inventario = inventario if inventario != null else InventoryState.new()
 	_farm = farm if farm != null else FarmState.new()
 	_items = items if items != null else ItemCatalog.new()
 	_crops = crops if crops != null else CropCatalog.new()
+	_terreno = terreno if terreno != null else EstadoTerreno.new()
 
 
 ## A ação que "usar neste tile" vira, ou `null` se não há nada a fazer.
@@ -65,6 +74,17 @@ func acao_para(player_id: int, x: int, y: int) -> SimAction:
 	var def := _items.get_def(item_id)
 	if def == null:
 		return null
+
+	# No poço, o gesto é encher — e só quem carrega alguma coisa tem o que
+	# encher lá. Vem antes da limpeza porque água não se limpa, e antes de arar
+	# porque não se ara dentro do poço.
+	if _terreno.cobertura(x, y) == EstadoTerreno.AGUA:
+		return _encher(player_id, def, x, y)
+
+	# Antes de qualquer coisa que dependa de terra limpa: se a ferramenta na mão
+	# dá conta do que cobre o tile, o gesto é tirar aquilo do caminho.
+	if def.alvos_de_limpeza.has(_terreno.cobertura(x, y)):
+		return _limpar(player_id, item_id, x, y)
 
 	match def.acao_de_uso:
 		ItemDef.ACAO_ARAR:
@@ -105,7 +125,43 @@ func _colher(player_id: int, x: int, y: int) -> HarvestCropAction:
 	acao.y = y
 	return acao
 
+## Encher no poço. `null` quando não há o que encher — item que não carrega, ou
+## já cheio. Estar cheio não é erro; é ausência de gesto, e ausência é silêncio.
+func _encher(player_id: int, def: ItemDef, x: int, y: int) -> EncherRegadorAction:
+	if def.capacidade_carga <= 0:
+		return null
+	var slot := _slot_na_mao(player_id)
+	if slot == null or slot.carga >= def.capacidade_carga:
+		return null
+	var acao := EncherRegadorAction.new()
+	acao.player_id = player_id
+	acao.x = x
+	acao.y = y
+	return acao
+
+## O slot que o jogador segura, ou `null`. O índice pode apontar além dos slots
+## que existem, como em `item_na_mao`.
+func _slot_na_mao(player_id: int) -> InventoryState.Slot:
+	var inv := _inventario.get_player(player_id)
+	return inv.slot_em(inv.slot_na_mao)
+
+## Tirar do caminho o que cobre o tile. Quem já decidiu que a ferramenta serve
+## foi o chamador — aqui só se monta a intenção. A recusa de verdade (cobertura
+## que essa ferramenta não remove, ou tile já limpo) é do `SistemaTerreno`, que
+## responde com motivo.
+func _limpar(player_id: int, item_id: String, x: int, y: int) -> LimparTerrenoAction:
+	var acao := LimparTerrenoAction.new()
+	acao.player_id = player_id
+	acao.item_id = item_id
+	acao.x = x
+	acao.y = y
+	return acao
+
+## Arar exige chão livre desde a wave 14: sem isso a enxada araria por baixo da
+## pedra, e o jogador plantaria dentro de um matagal.
 func _arar(player_id: int, x: int, y: int) -> TillPlotAction:
+	if not _terreno.e_livre(x, y):
+		return null
 	var plot := _farm.peek_plot(x, y)
 	if plot.arada or plot.tem_cultura():
 		return null

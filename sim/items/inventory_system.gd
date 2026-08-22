@@ -19,6 +19,7 @@ const MOTIVO_ITEM_INSUFICIENTE: String = "item_insuficiente"
 const MOTIVO_DINHEIRO_INSUFICIENTE: String = "dinheiro_insuficiente"
 const MOTIVO_CULTURA_DESCONHECIDA: String = "cultura_desconhecida"
 const MOTIVO_SLOT_INVALIDO: String = "slot_invalido"
+const MOTIVO_SEM_AGUA: String = "sem_agua"
 
 var _state: InventoryState
 var _catalog: ItemCatalog
@@ -56,6 +57,13 @@ func handle(action: SimAction) -> Array[SimEvent]:
 		return _equipar_slot(action as EquiparSlotAction)
 	if action is MoverSlotAction:
 		return _mover_slot(action as MoverSlotAction)
+	# Regar não é ação do inventário, mas o **custo** dela é: a água mora no
+	# slot, e o slot é daqui. Mesma família do `PlantCropAction`, que já é
+	# cobrado neste arquivo — só que o preço é carga, não item.
+	if action is WaterPlotAction:
+		return _gasta_agua(action as WaterPlotAction)
+	if action is EncherRegadorAction:
+		return _enche(action as EncherRegadorAction)
 	return []
 
 ## Qualquer mecânica que conceda item emite um `ItemGrantedEvent`; a mochila
@@ -146,6 +154,71 @@ func _add_item(action: AddItemAction) -> Array[SimEvent]:
 		lost.qtd = restante
 		events.append(lost)
 	return events
+
+## Cobra a regada do que está na mão. Item sem `capacidade_carga` passa reto:
+## capacidade zero descreve a enxada e o trigo, e regar com eles não é "regador
+## vazio" — é outra coisa, e quem responde por ela é o `ResolvedorUso`, com
+## `null`. Recusar aqui daria o motivo errado ao jogador.
+##
+## **Não emite evento de carga.** O `PlotWateredEvent` que o `FarmSystem` emite
+## logo em seguida já é o sinal de que uma regada saiu, e é por ele que a tela
+## atualiza o medidor (decisão da wave 14.1). Um evento só para dizer "menos
+## um" seria a mesma frase na mesma cascata.
+##
+## O desconto acontece **antes** de o Farm olhar o tile, como a semente do
+## `PlantCropAction`. Na prática ninguém perde água à toa: o resolvedor não
+## devolve `WaterPlotAction` em tile que não aceita rega.
+func _gasta_agua(action: WaterPlotAction) -> Array[SimEvent]:
+	var inv := _state.get_player(action.player_id)
+	var slot := inv.slot_em(inv.slot_na_mao)
+	if slot == null or slot.vazio():
+		return []
+
+	var def := _catalog.get_def(slot.item_id)
+	if def == null or def.capacidade_carga <= 0:
+		return []
+
+	if slot.carga <= 0:
+		action.rejeitada = true
+		return [_rejeitada(action, MOTIVO_SEM_AGUA)]
+
+	slot.carga -= 1
+	return []
+
+## Enche o que está na mão até a capacidade do `.tres`.
+##
+## Nunca recusa: encher já cheio não é impossibilidade, é ausência de mudança —
+## e sem mudança não sai evento, como manda a regra de `sim/`. Quem impede o
+## clique inútil é o resolvedor, devolvendo `null` antes de a ação existir.
+##
+## Não confere se o tile é mesmo água: **quem sabe o que cobre o chão é o
+## `SistemaTerreno`**, e ler o state dele daqui seria o primeiro state alheio
+## lido pelo inventário. O resolvedor já só monta esta ação em cima do poço, e
+## a coordenada viaja no evento para quem quiser desenhar de onde a água veio.
+func _enche(action: EncherRegadorAction) -> Array[SimEvent]:
+	var inv := _state.get_player(action.player_id)
+	var slot := inv.slot_em(inv.slot_na_mao)
+	if slot == null or slot.vazio():
+		return []
+
+	var def := _catalog.get_def(slot.item_id)
+	if def == null or def.capacidade_carga <= 0:
+		return []
+	if slot.carga >= def.capacidade_carga:
+		return []
+
+	var de := slot.carga
+	slot.carga = def.capacidade_carga
+
+	var evento := RegadorEnchidoEvent.new()
+	evento.player_id = action.player_id
+	evento.item_id = slot.item_id
+	evento.de = de
+	evento.para = slot.carga
+	evento.capacidade = def.capacidade_carga
+	evento.x = action.x
+	evento.y = action.y
+	return [evento]
 
 ## Tudo ou nada: não existe remoção parcial. Se falta, rejeita e não encosta
 ## no state.

@@ -64,3 +64,33 @@ const ACOES_CONHECIDAS: Array[String] = [ACAO_NENHUMA, ACAO_ARAR, ACAO_REGAR]
 ## digitado à mão — errar uma letra aqui é o jeito mais comum de o sprite não
 ## aparecer no jogo.
 @export_file("*.png") var sprite: String = ""
+
+@export_group("Carga")
+## Quanto este item leva dentro — regadas de água, hoje.
+##
+## **Zero é item que não carrega nada**, e descreve corretamente tudo o que já
+## existe: a enxada não enche, o trigo não enche. É o default que faz `.tres`
+## antigo continuar valendo.
+##
+## Quanto **cabe** é aqui; quanto **tem agora** é o `Slot.carga`, porque dois
+## regadores na mochila precisam de dois números diferentes.
+##
+## O regador do ferreiro, na wave dele, é este número maior — a progressão
+## vertical herdada da mina (PRINCIPIOS §8) cabe num campo de `.tres`.
+@export_range(0, 999, 1) var capacidade_carga: int = 0
+
+@export_group("Limpeza")
+## O que esta ferramenta consegue **tirar do caminho**, em coberturas do
+## `EstadoTerreno` (`mato`, `pedra`, `arvore`, `toco`).
+##
+## É separado de `acao_de_uso` de propósito: aquele diz o que a ferramenta faz
+## em terra limpa (arar, regar), este diz o que ela remove antes de a terra
+## ficar limpa. A enxada faz as duas coisas — ara e capina —, e é o contexto do
+## tile que decide qual, como manda a wave 11.2.
+##
+## Vazio (o default) é ferramenta que não limpa nada. `.tres` antigo carrega e o
+## regador continua sendo só regador.
+##
+## Ferramenta nova continua sendo um `.tres`: quem quiser uma foice que corta
+## mato e arbusto escreve os dois nomes aqui, sem tocar em código.
+@export var alvos_de_limpeza: Array[String] = []

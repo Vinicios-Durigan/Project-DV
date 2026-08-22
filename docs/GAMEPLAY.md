@@ -177,10 +177,19 @@ Regra de balanceamento: lucro/dia da lenta ≈ 2× o da rápida.
   "save_version": 1,
   "time":  { "dia": 3, "minuto": 360, "estacao": "primavera" },
   "farm":  { "plots": { "12:07": { "crop_id": "rabanete", "estagio": 2, "regada": true } } },
-  "inventory": { "0": { "slots": [ { "item_id": "enxada", "qtd": 1 }, { "item_id": "", "qtd": 0 }, … ], "capacity": 24, "dinheiro": 500, "slot_na_mao": 0 } },
-  "shipping": { "itens": [] }
+  "inventory": { "0": { "slots": [ { "item_id": "enxada", "qtd": 1, "carga": 0 }, { "item_id": "regador", "qtd": 1, "carga": 15 }, … ], "capacity": 24, "dinheiro": 500, "slot_na_mao": 0 } },
+  "shipping": { "itens": [] },
+  "locais": { "jogadores": { "0": "fazenda" } },
+  "cidade": { "relogio": 4680, "estabelecimentos": { "moinho": { "dias_com_entrega": 3, "cota": 10, "encomendas": [] } } },
+  "contratos": { "semente": 20260822, "relogio": 4680, "contratos": {}, "dias": {} },
+  "terreno": { "semente": 20260822, "tiles": { "7:5": "agua", "2:3": "pedra" }, "ociosos": {} }
 }
 ```
+
+Os cinco últimos blocos entraram nas waves 10 a 14.1, cada um no **fim** do
+arquivo e sem migração: bloco ausente cai no default e o save antigo continua
+abrindo. `carga` no slot é o exemplo mais recente — save de antes da 14.1 abre
+com o regador vazio, e o jogador enche no primeiro poço.
 
 - Todo campo com default; campo novo entra sem migração; remover/renomear exige migração incremental por versão.
 - Autosave ao dormir; save manual não entra no slice.

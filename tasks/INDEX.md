@@ -21,8 +21,8 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | 12 | Cidade — beneficiamento e cota | concluída | 2026-08-22 |
 | 12.1 | A cidade ganha lugar — prédios no mapa e aba no Tab | concluída | 2026-08-22 |
 | 13 | Contrato — o dono encomenda, e aceitar é apostar | concluída | 2026-08-22 |
-| 14 | Terreno — o mapa fecha sozinho, e limpar é decisão | pendente | — |
-| 14.1 | Água — o regador acaba, e regar vira rota | pendente | — |
+| 14 | Terreno — o mapa fecha sozinho, e limpar é decisão | concluída | 2026-08-22 |
+| 14.1 | Água — o regador acaba, e regar vira rota | concluída | 2026-08-22 |
 
 A wave 09 foi removida em 2026-08-21. "Pedido do dia" e "contrato de
 estabelecimento" eram a mesma mecânica: encomenda de um dono que te conhece e

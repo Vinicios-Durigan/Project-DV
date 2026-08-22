@@ -24,6 +24,12 @@ const SLOT_NA_MAO_PADRAO: int = 0
 class Slot extends RefCounted:
 	var item_id: String = ""
 	var qtd: int = 0
+	## Quanto o item deste slot ainda tem dentro — água, hoje.
+	##
+	## Mora no slot, e não no jogador, porque com dois regadores na mochila (o
+	## velho e o do ferreiro) o número teria que pertencer a um deles. Quanto
+	## **cabe** é do `ItemDef`; quanto **tem** é daqui.
+	var carga: int = 0
 
 	func _init(item_id_: String = "", qtd_: int = 0) -> void:
 		item_id = item_id_
@@ -39,13 +45,19 @@ class Slot extends RefCounted:
 	func esvazia() -> void:
 		item_id = ""
 		qtd = 0
+		# A água era do regador que estava aqui. Deixá-la para trás daria meio
+		# regador de graça ao próximo item que caísse nesta posição.
+		carga = 0
 
 	func to_dict() -> Dictionary:
-		return {"item_id": item_id, "qtd": qtd}
+		return {"item_id": item_id, "qtd": qtd, "carga": carga}
 
+	## `carga` ausente é save de antes da wave 14.1: o regador abre vazio e o
+	## jogador enche no primeiro poço. Sem migração.
 	func from_dict(data: Dictionary) -> void:
 		item_id = String(data.get("item_id", ""))
 		qtd = int(data.get("qtd", 0))
+		carga = maxi(int(data.get("carga", 0)), 0)
 
 
 ## A mochila de um jogador.

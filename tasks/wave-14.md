@@ -101,7 +101,7 @@ se você preparou mais chão do que dá conta.
 
 ## Tarefas
 
-### 14.1 — EstadoTerreno
+### 14.1 — EstadoTerreno ✅
 Cria: `sim/mundo/estado_terreno.gd`, `tests/test_estado_terreno.gd`
 Faz: a cobertura de cada tile indexada por `"x:y"` (`livre`, `mato`, `pedra`,
 `arvore`, `toco`, `agua`), a `semente_terreno` e a tabela de "limpar vira o
@@ -110,7 +110,7 @@ limpa). Tile ausente do dicionário é `livre`, como o plot ausente é intocado.
 `to_dict`/`from_dict` com default em todo campo. Sem propagação e sem RNG
 rodando: só dado e consulta.
 
-### 14.2 — SistemaTerreno
+### 14.2 — SistemaTerreno ✅
 Cria: `sim/mundo/sistema_terreno.gd`, `sim/mundo/limpar_terreno_action.gd`,
 `sim/mundo/terreno_mudou_event.gd`, `tests/test_sistema_terreno.gd`
 Depende de: 14.1
@@ -122,7 +122,7 @@ diário. Emite `TerrenoMudouEvent` em toda mudança. Lê `FarmState` só para sa
 se o tile tem cultura. Registra no tick em `sim/sim_factory.gd`, depois de
 Locais.
 
-### 14.3 — O tile que fecha
+### 14.3 — O tile que fecha ✅
 Cria: `tests/test_mato_cobre_arado.gd` (edita `sim/crops/farm_system.gd`)
 Depende de: 14.2
 Faz: `FarmSystem.react` aceita `TerrenoMudouEvent` e desara o plot quando a
@@ -130,7 +130,7 @@ cobertura deixa de ser `livre`. O teste é a decisão travada da wave: tile arad
 vazio é coberto e perde o arado; tile com cultura **nunca** é coberto, nem
 verde nem pronto.
 
-### 14.4 — Limpar entra no usar
+### 14.4 — Limpar entra no usar ✅
 Cria: `tests/test_resolvedor_limpeza.gd` (edita `sim/items/resolvedor_uso.gd` e
 `sim/items/item_def.gd`)
 Depende de: 14.2
@@ -139,7 +139,7 @@ Faz: `ItemDef.alvos_de_limpeza` com default vazio; o resolvedor devolve
 mão, e `arar` passa a exigir cobertura `livre`. Ordem das regras preservada:
 cultura pronta continua tendo prioridade sobre tudo.
 
-### 14.5 — O terreno no mapa do playground
+### 14.5 — O terreno no mapa do playground ✅
 Cria: `game/dev/paleta_terreno.gd` (edita `game/dev/mundo_esboco.gd`,
 `game/dev/inspetor_tile.gd`, `sim/sim_factory.gd`)
 Depende de: 14.2, 14.3
@@ -149,7 +149,44 @@ a cobertura crua do tile mirado; machado e picareta entram na entrega inicial da
 `SimFactory`. Reusa os nós em vez de recriar a cada evento — o sintoma da
 receita 3 §4 já custou duas pendências.
 
+## O que saiu diferente do planejado
+
+- **O `EstadoTerreno` guarda o contador do arado ocioso.** A tarefa 14.1 dizia
+  "só dado e consulta", e o contador não estava previsto — mas "arado vazio
+  fecha em 3 dias" precisa de alguém contando, e esse alguém não pode ser o
+  `FarmState` (o terreno não escreve nele) nem memória volátil do sistema (o
+  relógio reiniciaria a cada load).
+- **`ItemDef.alvos_de_limpeza` entrou na 14.2, não na 14.4.** A recusa por
+  `ferramenta_errada` que a 14.2 pedia depende do campo existir; a 14.4 ficou
+  com o resolvedor, que era a parte de verdade dela.
+- **Desarar o tile não emite evento.** É a única mudança de estado do
+  `FarmSystem` que não emite, e está documentada no código: o
+  `TerrenoMudouEvent` que a causou já conta a história inteira na mesma cascata
+  — um tile que deixou de ser livre não tem como estar arado. Um
+  `PlotDesaradoEvent` seria a mesma frase dita duas vezes.
+- **Duas ferramentas novas em `data/items/`.** `machado.tres` e `picareta.tres`
+  não estavam no Impacto, mas sem elas metade do chão gerado seria inalcançável
+  para sempre. A enxada ganhou `alvos_de_limpeza = ["mato"]` no `.tres`.
+- **A hotbar começa com quatro ferramentas**, não duas — metade dela ocupada no
+  dia 1. O custo de slot é real e vale medir no playtest.
+- **Cinco arquivos de teste de waves anteriores foram tocados**, todos porque o
+  mundo mudou de verdade: `test_layout_playground` (presumia fazenda limpa),
+  `test_cadeia_trigo` (definia ferramenta só por `acao_de_uso`, e agora limpar
+  também é ferramenta), `test_item_defs` e `test_sim_factory` (contagem de itens
+  e ordem do tick) e `test_sistema_cidade` (ordem do tick).
+- **O `test_sim_factory` deixou de pegar sistema por índice.** Inserir o Terreno
+  na segunda posição quebrou meia dúzia de testes que só queriam o inventário;
+  agora só o teste da **ordem** usa índice, e o resto pergunta pelo tipo.
+- **Um arquivo de teste a mais:** `tests/test_terreno_no_mapa.gd`. A tarefa 14.5
+  não declarava teste, e a regra do projeto exige.
+
 ## Em aberto
+
+- **A fazenda pode nascer com entulho debaixo do jogador.** A geração sorteia
+  manchas em toda a área cultivável, sem reservar o ponto onde a partida começa
+  — e pedra e árvore vão bloquear passagem na wave de `game/`. Descoberto
+  quando três testes do playground quebraram por sorteio. Decidir se a geração
+  reserva uma clareira inicial ou se o jogador nasce fora da área cultivável.
 
 - **Se a fazenda ficar chata, não vai dar para saber se foi o mato ou a
   caminhada até o poço.** A wave 14.1 (água) foi juntada a esta por decisão do

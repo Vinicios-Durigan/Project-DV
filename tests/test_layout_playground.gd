@@ -20,6 +20,17 @@ func before_each() -> void:
 	add_child_autofree(_bridge)
 	await get_tree().process_frame
 	_playground = _acha_playground()
+	_limpa_o_terreno()
+
+## A fazenda nasce com entulho sorteado desde a wave 14, e uma mancha pode cair
+## justamente no canteiro que estes testes usam.
+##
+## Eles falam do **gesto** — usar com a enxada ara, usar com a semente planta —,
+## e não do terreno; deixar o sorteio decidir se o teste passa seria trocar uma
+## asserção por uma aposta. Quem cobre o entulho é `test_sistema_terreno.gd`.
+func _limpa_o_terreno() -> void:
+	var terreno := _bridge.get_factory().get_estado_terreno()
+	terreno.from_dict({"semente": terreno.semente})
 
 
 func after_each() -> void:

@@ -70,6 +70,10 @@ var _mouse_no_mapa: bool = false
 ## O que está na mão, segundo a sim. Chega pelo `SlotEquipadoEvent` — o painel
 ## não precisa avisar ninguém.
 var _item_na_mao: String = ""
+## Quanto o item na mão ainda tem, e quanto cabe. `-1` na capacidade é "não
+## carrega nada" — o caso de tudo menos o regador.
+var _carga: int = 0
+var _capacidade: int = -1
 
 
 func _ready() -> void:
@@ -114,6 +118,21 @@ func no_alcance(tile: Vector2i) -> bool:
 ## O que está na mão. O rótulo do retículo sai daqui.
 func item_na_mao() -> String:
 	return _item_na_mao
+
+## O texto escrito acima do retículo: o nome do item e, quando ele carrega
+## alguma coisa, quanto ainda tem.
+##
+## Existe como função pública, e não solto dentro do `_draw`, porque é a única
+## forma de o teste ler o que o jogador lê — texto desenhado com `draw_string`
+## não deixa nó nenhum para inspecionar.
+func rotulo() -> String:
+	if _item_na_mao.is_empty():
+		return ""
+	var def := _bridge.get_item_catalog().get_def(_item_na_mao) if _bridge != null else null
+	var nome := def.nome if def != null and not def.nome.is_empty() else _item_na_mao
+	if _capacidade <= 0:
+		return nome
+	return "%s %d/%d" % [nome, _carga, _capacidade]
 
 
 # --- Input ---
@@ -185,12 +204,43 @@ func _marca_redesenho() -> void:
 func _on_sim_event(event: SimEvent) -> void:
 	if event is SlotEquipadoEvent:
 		_item_na_mao = (event as SlotEquipadoEvent).item_id
+		_le_a_carga()
+	# A carga muda em dois momentos, e os dois avisam: uma regada saiu, ou o
+	# regador voltou cheio do poço. Reler aqui, e não no `_draw`, é o que evita
+	# um `snapshot()` por frame — a foto é cara, e o retículo redesenha sempre.
+	if event is RegadorEnchidoEvent or event is PlotWateredEvent:
+		_le_a_carga()
 	queue_redraw()
 
 ## A mão no boot: nenhum evento aconteceu ainda, então o valor inicial vem do
 ## snapshot — a mesma foto que o save grava.
 func _le_a_mao() -> void:
 	_item_na_mao = _resolvedor().item_na_mao(SimFactory.PLAYER_PADRAO)
+	_le_a_carga()
+
+## Quanto o item na mão ainda tem dentro, e quanto cabe. Padrão 3: sai do
+## `snapshot()`, a mesma foto que o save grava.
+##
+## `-1` na capacidade quer dizer "isto não carrega nada", que é o caso de tudo
+## menos o regador — e é o que faz o rótulo não escrever `0/0` na enxada.
+func _le_a_carga() -> void:
+	_carga = 0
+	_capacidade = -1
+	if _bridge == null or _item_na_mao.is_empty():
+		return
+
+	var def := _bridge.get_item_catalog().get_def(_item_na_mao)
+	if def == null or def.capacidade_carga <= 0:
+		return
+	_capacidade = def.capacidade_carga
+
+	var jogador: Dictionary = _bridge.get_world().snapshot() \
+		.get(SimFactory.CHAVE_INVENTORY, {}).get(str(SimFactory.PLAYER_PADRAO), {})
+	var slots: Array = jogador.get("slots", [])
+	var indice := int(jogador.get("slot_na_mao", 0))
+	if indice < 0 or indice >= slots.size():
+		return
+	_carga = int((slots[indice] as Dictionary).get("carga", 0))
 
 
 # --- Ordens ---
@@ -246,8 +296,10 @@ func _draw() -> void:
 func _desenha_rotulo(rect: Rect2, pode: bool) -> void:
 	if _item_na_mao.is_empty():
 		return
-	var def := _bridge.get_item_catalog().get_def(_item_na_mao)
-	var nome := def.nome if def != null and not def.nome.is_empty() else _item_na_mao
+	# O que carrega mostra quanto tem, no mesmo rótulo. Regar até acabar precisa
+	# ser legível sem abrir painel — o número na mão é o aviso, e ele fica onde
+	# o olho do jogador já está: em cima do retículo.
+	var nome := rotulo()
 	var fonte := get_theme_default_font()
 	var largura := fonte.get_string_size(nome, HORIZONTAL_ALIGNMENT_LEFT, -1,
 		Paleta.TAMANHO_DADO).x

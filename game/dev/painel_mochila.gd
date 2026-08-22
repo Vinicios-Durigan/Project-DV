@@ -452,7 +452,17 @@ func _rodape() -> Control:
 
 # --- Evento vira tela ---
 
-func _on_sim_event(_event: SimEvent) -> void:
+## Remontar a tela inteira a cada evento é a pendência aberta desde a wave 12.1,
+## e o conserto de verdade — reusar os quadrados, como o `painel_cidade` faz —
+## continua por fazer.
+##
+## O que dá para tirar de graça é o pior sintoma: o `MinuteTickedEvent` sai 60
+## vezes por segundo em ×60, e nada nesta tela muda com o minuto. Ignorá-lo é
+## uma linha e derruba a remontagem de ~3.600 por minuto de jogo para as poucas
+## que uma ação de verdade causa.
+func _on_sim_event(event: SimEvent) -> void:
+	if event is MinuteTickedEvent:
+		return
 	_atualiza()
 
 func _snapshot(chave: String) -> Dictionary:
@@ -546,6 +556,13 @@ func _quadrado_da_hotbar(indice: int, item_id: String, qtd: int, na_mao: bool) -
 			botao.add_child(_etiqueta_de_quantidade("×%d" % qtd))
 	else:
 		botao.text = "%d\n%s" % [tecla, nome] if qtd <= 1 else "%d\n%s ×%d" % [tecla, nome, qtd]
+
+	# O que carrega mostra quanto tem. O canto de baixo à direita é da
+	# quantidade, então a carga fica embaixo à esquerda — e um regador nunca
+	# empilha, então os dois números jamais disputam o mesmo slot.
+	var carga := _carga_do_slot(indice)
+	if not carga.is_empty():
+		botao.add_child(_etiqueta_de_carga(carga))
 	botao.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	botao.pressed.connect(equipa.bind(indice))
@@ -610,6 +627,39 @@ func _etiqueta_de_quantidade(texto: String) -> Label:
 	rotulo.offset_right = -4.0
 	rotulo.offset_bottom = -2.0
 	rotulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	rotulo.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	rotulo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return rotulo
+
+## Quanto o item deste slot ainda tem dentro, pronto para escrever — ou vazio
+## quando ele não carrega nada.
+##
+## Padrão 3: sai do `snapshot()`, a mesma foto que o save grava. A capacidade
+## vem do `.tres`, que é definição e leitura livre.
+func _carga_do_slot(indice: int) -> String:
+	if _bridge == null:
+		return ""
+	var slots: Array = _jogador().get("slots", [])
+	if indice < 0 or indice >= slots.size():
+		return ""
+	var slot: Dictionary = slots[indice]
+	var def := _bridge.get_item_catalog().get_def(String(slot.get("item_id", "")))
+	if def == null or def.capacidade_carga <= 0:
+		return ""
+	return "%d/%d" % [int(slot.get("carga", 0)), def.capacidade_carga]
+
+## O medidor de carga, no canto de baixo à esquerda. Vermelho quando acabou:
+## descobrir que o regador está vazio no meio do canteiro é a informação mais
+## cara desta tela.
+func _etiqueta_de_carga(texto: String) -> Label:
+	var rotulo := Label.new()
+	rotulo.text = texto
+	rotulo.theme_type_variation = &"Recusa" if texto.begins_with("0/") else &"Micro"
+	rotulo.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	rotulo.offset_left = 3.0
+	rotulo.offset_top = -20.0
+	rotulo.offset_right = 44.0
+	rotulo.offset_bottom = -2.0
 	rotulo.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	rotulo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return rotulo

@@ -25,8 +25,8 @@ func before_each() -> void:
 
 
 func test_catalogo_de_itens_carrega_do_disco() -> void:
-	assert_eq(_items.size(), 14,
-		"5 colheitas + 5 sementes + farinha e pão + enxada e regador")
+	assert_eq(_items.size(), 16,
+		"5 colheitas + 5 sementes + farinha e pão + as 4 ferramentas")
 
 ## Ferramenta é item, e não um resource paralelo (GAMEPLAY §4: "ferramentas e
 ## sementes ocupam slots"). O que a distingue é um campo: o que ela faz quando

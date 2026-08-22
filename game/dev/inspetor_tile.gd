@@ -72,6 +72,15 @@ func _atualiza() -> void:
 		return
 
 	_alvo.text = "canteiro %d,%d" % [canteiro.x, canteiro.y]
+
+	# A cobertura vem primeiro porque ela **manda** no tile: coberto, não há
+	# rega nem estágio para inspecionar. É o número que se olha para calibrar a
+	# propagação da noite.
+	var cobertura := _mundo.cobertura_em(canteiro)
+	if PaletaTerreno.cobre(cobertura):
+		_texto_campos("cobertura: %s\n(limpe antes de arar)" % PaletaTerreno.nome_de(cobertura))
+		return
+
 	var plot: Dictionary = _mundo.plot_em(canteiro)
 	if plot.is_empty():
 		_texto_campos("solo virgem\n(nunca arado)")

@@ -113,7 +113,12 @@ func test_farinha_e_pao_sao_os_unicos_itens_que_a_cidade_fabrica() -> void:
 	var orfaos: Array[String] = []
 	for item_id in _items.ids():
 		var def := _items.get_def(item_id)
-		if de_cultura.has(item_id) or def.acao_de_uso != ItemDef.ACAO_NENHUMA:
+		# Ferramenta é o que **faz** alguma coisa ao ser usada. Até a wave 14
+		# isso era só `acao_de_uso`; o machado e a picareta não aram nem regam —
+		# elas tiram coisa do caminho, e isso também é ferramenta.
+		var e_ferramenta := def.acao_de_uso != ItemDef.ACAO_NENHUMA \
+			or not def.alvos_de_limpeza.is_empty()
+		if de_cultura.has(item_id) or e_ferramenta:
 			continue
 		orfaos.append(item_id)
 	assert_eq(orfaos, ITENS_DE_BENEFICIAMENTO,

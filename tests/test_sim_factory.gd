@@ -20,46 +20,59 @@ func before_each() -> void:
 func _sistema(indice: int) -> SimSystem:
 	return _world.get_systems()[indice]
 
+## O sistema daquele tipo, onde quer que ele esteja na fila.
+##
+## Só o teste da **ordem** deve depender de índice — ele existe justamente para
+## prender a ordem. Todo o resto pergunta pelo tipo: quando a wave 14 pôs o
+## Terreno na segunda posição, meia dúzia de testes que só queriam o inventário
+## quebraram por tabela.
+func _do_tipo(tipo: Variant) -> SimSystem:
+	for sistema in _world.get_systems():
+		if is_instance_of(sistema, tipo):
+			return sistema
+	return null
 
-func test_monta_os_sete_sistemas_na_ordem_fixa() -> void:
+
+func test_monta_os_oito_sistemas_na_ordem_fixa() -> void:
 	var systems := _world.get_systems()
-	assert_eq(systems.size(), 7, "os 7 sistemas do slice")
+	assert_eq(systems.size(), 8, "os 8 sistemas do slice")
 	assert_true(_sistema(0) is SistemaLocais, "1. Locais barra fora de lugar antes de alguém cobrar")
-	assert_true(_sistema(1) is InventorySystem, "2. Inventory valida e cobra")
-	assert_true(_sistema(2) is ShippingSystem, "3. Shipping vende antes de o dia virar")
-	assert_true(_sistema(3) is FarmSystem, "4. Farm cresce depois da venda")
-	assert_true(_sistema(4) is SistemaCidade, "5. Cidade age com a colheita já na mochila")
-	assert_true(_sistema(5) is SistemaContratos, "6. Contratos, o degrau seguinte da cidade")
-	assert_true(_sistema(6) is TimeSystem, "7. Time vira o calendário por último")
+	assert_true(_sistema(1) is SistemaTerreno, "2. Terreno recusa limpeza antes de alguém cobrar")
+	assert_true(_sistema(2) is InventorySystem, "3. Inventory valida e cobra")
+	assert_true(_sistema(3) is ShippingSystem, "4. Shipping vende antes de o dia virar")
+	assert_true(_sistema(4) is FarmSystem, "5. Farm cresce depois da venda")
+	assert_true(_sistema(5) is SistemaCidade, "6. Cidade age com a colheita já na mochila")
+	assert_true(_sistema(6) is SistemaContratos, "7. Contratos, o degrau seguinte da cidade")
+	assert_true(_sistema(7) is TimeSystem, "8. Time vira o calendário por último")
 
 func test_registra_todo_state_no_save_na_ordem_do_formato() -> void:
 	assert_eq(_world.state_keys(),
-		["time", "inventory", "farm", "shipping", "locais", "cidade", "contratos"],
+		["time", "inventory", "farm", "shipping", "locais", "cidade", "contratos", "terreno"],
 		"as chaves são o formato do save — GAMEPLAY §10; bloco novo entra no fim")
 
 func test_o_state_registrado_e_o_mesmo_que_o_sistema_usa() -> void:
 	assert_same(_world.get_state("time"), _factory.get_time_state(),
 		"salvar o state de outro objeto salvaria um mundo que ninguém joga")
-	assert_same(_world.get_state("inventory"), (_sistema(1) as InventorySystem).get_state())
-	assert_same(_world.get_state("shipping"), (_sistema(2) as ShippingSystem).get_state())
-	assert_same(_world.get_state("farm"), (_sistema(3) as FarmSystem).get_state())
+	assert_same(_world.get_state("inventory"), (_do_tipo(InventorySystem) as InventorySystem).get_state())
+	assert_same(_world.get_state("shipping"), (_do_tipo(ShippingSystem) as ShippingSystem).get_state())
+	assert_same(_world.get_state("farm"), (_do_tipo(FarmSystem) as FarmSystem).get_state())
 	assert_same(_world.get_state("locais"), _factory.get_estado_locais())
 
 func test_carrega_os_catalogos_de_data() -> void:
-	assert_eq(_factory.get_item_catalog().size(), 14, "os 14 itens de data/items/")
+	assert_eq(_factory.get_item_catalog().size(), 16, "os 16 itens de data/items/")
 	assert_eq(_factory.get_crop_catalog().ids(),
 		["abobora", "cenoura", "morango", "rabanete", "trigo"],
 		"as 5 culturas de data/crops/")
 
 func test_os_sistemas_compartilham_o_mesmo_catalogo() -> void:
-	assert_same((_sistema(1) as InventorySystem).get_catalog(), _factory.get_item_catalog(),
+	assert_same((_do_tipo(InventorySystem) as InventorySystem).get_catalog(), _factory.get_item_catalog(),
 		"catálogo é leitura livre, mas é um só")
-	assert_same((_sistema(2) as ShippingSystem).get_catalog(), _factory.get_item_catalog())
-	assert_same((_sistema(3) as FarmSystem).get_catalog(), _factory.get_crop_catalog())
-	assert_same((_sistema(1) as InventorySystem).get_crop_catalog(), _factory.get_crop_catalog())
+	assert_same((_do_tipo(ShippingSystem) as ShippingSystem).get_catalog(), _factory.get_item_catalog())
+	assert_same((_do_tipo(FarmSystem) as FarmSystem).get_catalog(), _factory.get_crop_catalog())
+	assert_same((_do_tipo(InventorySystem) as InventorySystem).get_crop_catalog(), _factory.get_crop_catalog())
 
 func test_mundo_novo_comeca_como_o_gameplay_manda() -> void:
-	var inv := (_sistema(1) as InventorySystem).get_state().get_player(SimFactory.PLAYER_PADRAO)
+	var inv := (_do_tipo(InventorySystem) as InventorySystem).get_state().get_player(SimFactory.PLAYER_PADRAO)
 	assert_eq(inv.dinheiro, 500, "500g de início, GAMEPLAY §5")
 	assert_eq(inv.count("semente_rabanete"), 5, "e 5 sementes da rápida")
 	assert_eq(_factory.get_time_state().dia, 1, "dia 1")
@@ -68,7 +81,7 @@ func test_mundo_novo_comeca_como_o_gameplay_manda() -> void:
 ## Sem ferramenta na mochila não se ara nem se rega: desde a wave 11.2 o que se
 ## pode fazer depende do que está na mão, e a mão vem da mochila.
 func test_mundo_novo_ja_vem_com_as_ferramentas() -> void:
-	var inv := (_sistema(1) as InventorySystem).get_state().get_player(SimFactory.PLAYER_PADRAO)
+	var inv := (_do_tipo(InventorySystem) as InventorySystem).get_state().get_player(SimFactory.PLAYER_PADRAO)
 	for item_id in SimFactory.FERRAMENTAS_INICIAIS:
 		assert_eq(inv.count(item_id), 1, "%s: sem ela o jogador não faz nada" % item_id)
 
@@ -76,7 +89,7 @@ func test_mundo_novo_ja_vem_com_as_ferramentas() -> void:
 ## entraram. Enxada na tecla 1 e regador na 2 é o arranjo com que se começa a
 ## jogar — se as sementes entrassem antes, a tecla 1 seria semente.
 func test_as_ferramentas_ocupam_os_primeiros_slots() -> void:
-	var inv := (_sistema(1) as InventorySystem).get_state().get_player(SimFactory.PLAYER_PADRAO)
+	var inv := (_do_tipo(InventorySystem) as InventorySystem).get_state().get_player(SimFactory.PLAYER_PADRAO)
 	for i in SimFactory.FERRAMENTAS_INICIAIS.size():
 		assert_eq(inv.slots[i].item_id, SimFactory.FERRAMENTAS_INICIAIS[i],
 			"slot %d fora da ordem da hotbar" % i)
@@ -96,7 +109,7 @@ func test_o_mundo_montado_joga_de_verdade() -> void:
 	plantar.item_id = "semente_rabanete"
 	_world.handle(TillPlotAction.new())
 	_world.handle(plantar)
-	assert_true((_sistema(3) as FarmSystem).get_state().peek_plot(0, 0).tem_cultura(),
+	assert_true((_do_tipo(FarmSystem) as FarmSystem).get_state().peek_plot(0, 0).tem_cultura(),
 		"a cadeia inteira funciona sem ninguém montar nada à mão")
 
 func test_o_relogio_anda_no_advance() -> void:

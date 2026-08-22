@@ -117,6 +117,9 @@ var _direcao: Vector2i = Vector2i(0, 1)
 var _local_comunicado: String = EstadoLocais.FAZENDA
 ## Cache dos plots do snapshot; atualiza a cada evento da sim.
 var _plots: Dictionary = {}
+## Cache das coberturas do terreno, na mesma chave `"x:y"` dos plots. Tile
+## ausente é chão livre — a sim guarda só o que cobre.
+var _coberturas: Dictionary = {}
 
 ## O jogador apertou direção neste frame. É apresentação pura — a sim não sabe
 ## e não precisa saber que existe alguém andando.
@@ -209,6 +212,10 @@ func canteiro_mirado() -> Vector2i:
 ## O plot cru do snapshot para um canteiro em coordenadas da sim ({} se vazio).
 func plot_em(canteiro: Vector2i) -> Dictionary:
 	return _plots.get("%d:%d" % [canteiro.x, canteiro.y], {})
+
+## O que cobre este canteiro, segundo a sim. `livre` quando não há entrada.
+func cobertura_em(canteiro: Vector2i) -> String:
+	return String(_coberturas.get("%d:%d" % [canteiro.x, canteiro.y], EstadoTerreno.LIVRE))
 
 ## Onde a tela acha que o jogador está — para os painéis; a verdade é da sim.
 func local_visual() -> String:
@@ -443,6 +450,18 @@ func _reage_com_juice(event: SimEvent) -> void:
 		# quem trabalhou foi a noite.
 		var cresceu := event as CropGrewEvent
 		_pisca(Vector2i(cresceu.x, cresceu.y))
+		return
+	if event is TerrenoMudouEvent:
+		# Mesmo tratamento da cascata da manhã, e pelo mesmo motivo: o mato que
+		# avançou durante a noite tem que ser **visto** avançando, senão não há
+		# como calibrar a propagação jogando. Limpar leva swing junto; a noite
+		# não, porque não foi o jogador quem trabalhou.
+		var mudou := event as TerrenoMudouEvent
+		var tile := Vector2i(mudou.x, mudou.y)
+		if mudou.motivo == TerrenoMudouEvent.POR_LIMPEZA:
+			_bate(tile)
+			return
+		_pisca(tile)
 
 ## O par que toda ação de ferramenta faz: o canteiro pisca e o jogador achata.
 func _bate(canteiro: Vector2i) -> void:
@@ -481,8 +500,12 @@ func _avanca_juice(delta: float) -> void:
 
 ## Painel mostra o snapshot, nunca state vivo (regra da wave 08).
 func _atualiza_plots() -> void:
-	_plots = _bridge.get_world().snapshot() \
-		.get(SimFactory.CHAVE_FARM, {}).get("plots", {})
+	var foto := _bridge.get_world().snapshot()
+	_plots = foto.get(SimFactory.CHAVE_FARM, {}).get("plots", {})
+	# Padrão 3: a cobertura sai da mesma foto que o save grava. Um dicionário
+	# cru de ~10 entradas por virada — nada é recriado, e é isso que aguenta o
+	# ×60 sem o mapa piscar.
+	_coberturas = foto.get(SimFactory.CHAVE_TERRENO, {}).get("tiles", {})
 
 
 # --- Desenho ---
@@ -543,6 +566,16 @@ func _desenha_canteiros(origem: Vector2) -> void:
 			var canteiro := Vector2i(x, y)
 			var canto := origem + Vector2(CANTEIRO_OFFSET + canteiro) * TILE
 			var rect := Rect2(canto, Vector2(TILE, TILE)).grow(-1.0)
+
+			# A cobertura vem antes dos dois canais do canteiro e os substitui:
+			# um tile coberto não tem rega nem estágio para mostrar, e quem olha
+			# precisa ver na hora que ali não dá para plantar.
+			var cobertura := cobertura_em(canteiro)
+			if PaletaTerreno.cobre(cobertura):
+				draw_rect(rect, PaletaTerreno.cor_de(cobertura))
+				_desenha_piscada(rect, canteiro)
+				continue
+
 			var plot: Dictionary = plot_em(canteiro)
 			if plot.is_empty():
 				# Canteiro virgem: só o contorno, para se saber onde arar.

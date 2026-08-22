@@ -54,8 +54,8 @@ func test_to_dict_tem_o_formato_do_save() -> void:
 	var esperado := {
 		"0": {
 			"slots": [
-				{"item_id": "", "qtd": 0},
-				{"item_id": "rabanete", "qtd": 5},
+				{"item_id": "", "qtd": 0, "carga": 0},
+				{"item_id": "rabanete", "qtd": 5, "carga": 0},
 			],
 			"capacity": 2,
 			"dinheiro": 500,
