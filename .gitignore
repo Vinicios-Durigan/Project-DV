@@ -4,3 +4,6 @@
 
 # config local do editor (caminho do binário varia por máquina)
 .vscode/
+
+# lixo do shell no Windows
+bash.exe.stackdump
