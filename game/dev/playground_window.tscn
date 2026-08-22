@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://game/dev/playground_window.gd" id="1_window"]
+[ext_resource type="PackedScene" path="res://game/dev/playground.tscn" id="2_playground"]
+
+[node name="PlaygroundWindow" type="Window"]
+title = "Project-DV — Playground (dev)"
+initial_position = 1
+size = Vector2i(1400, 800)
+visible = true
+script = ExtResource("1_window")
+
+[node name="Playground" parent="." instance=ExtResource("2_playground")]
