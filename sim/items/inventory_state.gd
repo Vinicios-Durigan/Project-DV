@@ -13,8 +13,14 @@ extends RefCounted
 const CAPACITY_PADRAO: int = 24
 const DINHEIRO_PADRAO: int = 500
 
+## O slot que começa na mão. É o primeiro da mochila, que é onde a `SimFactory`
+## põe a enxada — e é o default que descreve corretamente um save gravado antes
+## deste campo existir.
+const SLOT_NA_MAO_PADRAO: int = 0
 
-## Um stack: item + quantidade.
+
+## Um stack: item + quantidade. Slot sem item é **posição vazia**, e não um
+## buraco na lista — desde a wave 11.3 o endereço é fixo.
 class Slot extends RefCounted:
 	var item_id: String = ""
 	var qtd: int = 0
@@ -22,6 +28,17 @@ class Slot extends RefCounted:
 	func _init(item_id_: String = "", qtd_: int = 0) -> void:
 		item_id = item_id_
 		qtd = qtd_
+
+	## Posição livre. Quantidade zerada conta como vazia: é o que sobra quando o
+	## jogador gasta o último de um stack.
+	func vazio() -> bool:
+		return item_id.is_empty() or qtd <= 0
+
+	## Deixa a posição livre, sem tirá-la da lista. Tirar deslocaria todo mundo
+	## à direita — e a mão do jogador é um índice.
+	func esvazia() -> void:
+		item_id = ""
+		qtd = 0
 
 	func to_dict() -> Dictionary:
 		return {"item_id": item_id, "qtd": qtd}
@@ -36,9 +53,57 @@ class PlayerInventory extends RefCounted:
 	var slots: Array[Slot] = []
 	var capacity: int = InventoryState.CAPACITY_PADRAO
 	var dinheiro: int = InventoryState.DINHEIRO_PADRAO
+	## Índice do slot que está na mão. É estado de jogo, não de tela: é ele que
+	## decide o que a ação "usar" faz (`resolvedor_uso.gd`). Fora do save, o
+	## jogador reabriria a partida de mãos vazias sem entender por quê.
+	##
+	## O índice pode apontar para slot que não existe — mochila esvazia e o
+	## índice fica onde estava, como em qualquer hotbar. Quem lê trata a mão
+	## vazia; guardar o item em vez do índice faria a mão pular sozinha quando um
+	## stack acabasse.
+	var slot_na_mao: int = InventoryState.SLOT_NA_MAO_PADRAO
 
-	## Quanto o jogador tem do item, somando todos os stacks.
+	## A mochila nasce com um slot por capacidade, todos vazios. Endereço fixo
+	## desde o primeiro frame: é o que faz "pôr o morango no slot 3" existir.
+	func _init() -> void:
+		garante_tamanho()
+
+	## Completa a lista até a capacidade. Chamado depois de carregar o save (a
+	## lista antiga era compacta e curta) e depois de a capacidade crescer.
+	##
+	## Nunca **encolhe**: capacidade menor com item no fim jogaria item fora, e
+	## perder item calado é pior que uma mochila maior do que devia.
+	func garante_tamanho() -> void:
+		while slots.size() < capacity:
+			slots.append(Slot.new())
+
+	## O slot daquele índice, ou `null` fora da mochila. É por aqui que quem lê
+	## índice — a mão, o arrastar — evita sair da lista.
+	func slot_em(indice: int) -> Slot:
+		if indice < 0 or indice >= slots.size():
+			return null
+		return slots[indice]
+
+	## Primeira posição livre, ou -1 se a mochila está cheia.
+	func primeiro_livre() -> int:
+		for i in slots.size():
+			if slots[i].vazio():
+				return i
+		return -1
+
+	## Quantos slots têm item. É o número que a tela mostra como "3 / 24".
+	func ocupados() -> int:
+		var total := 0
+		for slot in slots:
+			if not slot.vazio():
+				total += 1
+		return total
+
+	## Quanto o jogador tem do item, somando todos os stacks. Id vazio é posição
+	## livre, não um item — perguntar por ele responde zero.
 	func count(item_id: String) -> int:
+		if item_id.is_empty():
+			return 0
 		var total := 0
 		for slot in slots:
 			if slot.item_id == item_id:
@@ -53,8 +118,13 @@ class PlayerInventory extends RefCounted:
 			"slots": slots_data,
 			"capacity": capacity,
 			"dinheiro": dinheiro,
+			"slot_na_mao": slot_na_mao,
 		}
 
+	## Save antigo (até a wave 11.2) gravava uma lista **compacta**, mais curta
+	## que a capacidade. Lida posicionalmente, ela cai nas primeiras posições —
+	## que é onde os itens estavam. É por isso que o endereço fixo entrou sem
+	## migração: o arquivo antigo já descrevia o mundo certo.
 	func from_dict(data: Dictionary) -> void:
 		slots.clear()
 		for slot_data: Variant in data.get("slots", []):
@@ -63,6 +133,8 @@ class PlayerInventory extends RefCounted:
 			slots.append(slot)
 		capacity = int(data.get("capacity", InventoryState.CAPACITY_PADRAO))
 		dinheiro = int(data.get("dinheiro", InventoryState.DINHEIRO_PADRAO))
+		slot_na_mao = int(data.get("slot_na_mao", InventoryState.SLOT_NA_MAO_PADRAO))
+		garante_tamanho()
 
 
 var _players: Dictionary = {}

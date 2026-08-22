@@ -25,7 +25,37 @@ func before_each() -> void:
 
 
 func test_catalogo_de_itens_carrega_do_disco() -> void:
-	assert_eq(_items.size(), 8, "4 colheitas + 4 sementes em data/items/")
+	assert_eq(_items.size(), 14,
+		"5 colheitas + 5 sementes + farinha e pão + enxada e regador")
+
+## Ferramenta é item, e não um resource paralelo (GAMEPLAY §4: "ferramentas e
+## sementes ocupam slots"). O que a distingue é um campo: o que ela faz quando
+## usada. O `ToolDef` previsto no §10 morreu nesta wave — ele duplicaria id,
+## nome e ícone para acrescentar essa única linha.
+func test_ferramenta_e_item_com_acao_de_uso() -> void:
+	for id in ["enxada", "regador"]:
+		var def := _items.get_def(id)
+		assert_not_null(def, "%s: ferramenta sem ItemDef não cabe na mochila" % id)
+		assert_false(def.acao_de_uso.is_empty(), "%s: ferramenta que não faz nada" % id)
+		assert_eq(def.stack_max, 1, "%s: ferramenta não empilha" % id)
+
+func test_a_enxada_ara_e_o_regador_rega() -> void:
+	assert_eq(_items.get_def("enxada").acao_de_uso, ItemDef.ACAO_ARAR)
+	assert_eq(_items.get_def("regador").acao_de_uso, ItemDef.ACAO_REGAR)
+
+func test_ferramenta_nao_se_vende() -> void:
+	# Preço 0 é "item que não se vende". Ferramenta no caixote virando dinheiro
+	# seria uma torneira: elas são de graça na entrega inicial.
+	for id in ["enxada", "regador"]:
+		assert_eq(_items.get_def(id).preco_venda, 0,
+			"%s: ferramenta com preço vira torneira de dinheiro" % id)
+
+func test_item_comum_nao_faz_nada_ao_ser_usado() -> void:
+	# O default preserva todo `.tres` que já existia: semente e colheita não
+	# ganharam comportamento nenhum de carona.
+	for id in ["rabanete", "semente_rabanete", "farinha"]:
+		assert_eq(_items.get_def(id).acao_de_uso, ItemDef.ACAO_NENHUMA,
+			"%s: item comum não é ferramenta" % id)
 
 func test_toda_cultura_tem_item_de_colheita_com_preco() -> void:
 	for crop_id in _crops.ids():
@@ -66,14 +96,17 @@ func test_semente_nunca_vale_mais_que_a_colheita() -> void:
 		assert_lt(semente.preco_venda, colheita.preco_venda,
 			"%s: plantar tem que pagar melhor que revender" % crop_id)
 
-func test_ids_do_catalogo_sao_exatamente_os_das_culturas() -> void:
-	var esperados: Array[String] = []
+## Nenhuma cultura sem item. O caminho contrário — item sem cultura — deixou de
+## ser erro na wave 12: farinha e pão não vêm de semente nenhuma, a cidade os
+## fabrica. Quem guarda esse lado agora é `test_cadeia_trigo.gd`, que sabe
+## quais itens a cidade tem direito de criar.
+func test_toda_cultura_tem_os_dois_itens_no_catalogo() -> void:
 	for crop_id in _crops.ids():
 		var crop := _crops.get_def(crop_id)
-		esperados.append(crop.item_colheita_id())
-		esperados.append(crop.item_semente_id())
-	esperados.sort()
-	assert_eq(_items.ids(), esperados, "nenhum item órfão, nenhuma cultura sem item")
+		assert_true(_items.has(crop.item_colheita_id()),
+			"%s: colheita sem item não entra na mochila" % crop_id)
+		assert_true(_items.has(crop.item_semente_id()),
+			"%s: semente sem item não se compra" % crop_id)
 
 func test_preco_de_venda_nao_mora_mais_na_cultura() -> void:
 	var campos: Array[String] = []
@@ -82,3 +115,31 @@ func test_preco_de_venda_nao_mora_mais_na_cultura() -> void:
 	assert_does_not_have(campos, "preco_venda",
 		"fonte única: quem tem preço de venda é o item, não a cultura")
 	assert_has(campos, "preco_semente", "o custo da semente continua sendo da cultura")
+
+## Ferramenta tem onde pendurar arte tanto quanto cultura tem. Antes deste
+## campo, `regador.tres` e `enxada.tres` não tinham linha nenhuma de ícone: a
+## cultura levava sprite no `CropDef` e o item ficava sem.
+func test_todo_item_tem_campo_de_sprite() -> void:
+	var campos: Array[String] = []
+	for prop: Dictionary in ItemDef.new().get_property_list():
+		campos.append(String(prop["name"]))
+	assert_has(campos, "sprite", "item sem campo de ícone não chega na hotbar")
+
+## O default vazio é o que mantém todo `.tres` de antes válido sem edição.
+func test_sprite_nasce_vazio_e_nao_quebra_tres_antigo() -> void:
+	assert_eq(ItemDef.new().sprite, "", "campo novo não pode exigir edição do que já existia")
+	for item_id in _items.ids():
+		assert_not_null(_items.get_def(item_id), "%s: o .tres continua carregando" % item_id)
+
+## Sprite preenchido aponta para arquivo que existe. Enquanto a arte não entra
+## todos estão vazios e o teste passa de graça — quando entrar, ele é quem
+## percebe caminho errado no `.tres`.
+func test_sprite_preenchido_aponta_para_arquivo_existente() -> void:
+	var quebrados: Array[String] = []
+	for item_id in _items.ids():
+		var caminho: String = _items.get_def(item_id).sprite
+		if caminho.is_empty():
+			continue
+		if not caminho.begins_with("res://") or not ResourceLoader.exists(caminho):
+			quebrados.append("%s -> %s" % [item_id, caminho])
+	assert_eq(quebrados, [] as Array[String], "sprite apontando para arquivo que não existe")

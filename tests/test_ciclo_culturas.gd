@@ -81,9 +81,12 @@ func _mochila() -> InventoryState.PlayerInventory:
 	return _inventory.get_state().get_player(0)
 
 
-func test_as_quatro_culturas_estao_no_catalogo() -> void:
-	assert_eq(_crops.ids(), ["abobora", "cenoura", "morango", "rabanete"],
-		"as 4 culturas do slice, carregadas de data/crops/")
+## O trigo entrou na wave 12: ele não é cultura de fazenda, é matéria-prima da
+## cidade. O ciclo dele é testado em `test_cadeia_trigo.gd`, junto com a escada
+## de valor que justifica a existência dele.
+func test_as_culturas_do_slice_estao_no_catalogo() -> void:
+	assert_eq(_crops.ids(), ["abobora", "cenoura", "morango", "rabanete", "trigo"],
+		"as 4 culturas do slice + o trigo da cidade, carregadas de data/crops/")
 
 func test_numeros_batem_com_a_tabela_do_gameplay() -> void:
 	assert_eq(_crops.get_def("rabanete").dias_ate_pronta(), 4)

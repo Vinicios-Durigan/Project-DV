@@ -23,6 +23,29 @@ func _v1() -> Dictionary:
 func _v0() -> Dictionary:
 	return {"time": {"dia": 3}}
 
+## A versão atual. Um save v2 já tem as ferramentas na mochila.
+func _v2() -> Dictionary:
+	return {
+		"save_version": 2,
+		"time": {"dia": 3, "minuto": 400, "estacao": "primavera"},
+		"inventory": {"0": {
+			"slots": [{"item_id": "enxada", "qtd": 1}],
+			"capacity": 24,
+			"dinheiro": 500,
+			"slot_na_mao": 0,
+		}},
+	}
+
+func _slots_de(data: Dictionary, player: String = "0") -> Array:
+	return data.get("inventory", {}).get(player, {}).get("slots", [])
+
+func _tem_item(data: Dictionary, item_id: String) -> bool:
+	for entrada: Variant in _slots_de(data):
+		var slot: Dictionary = entrada
+		if String(slot.get("item_id", "")) == item_id:
+			return true
+	return false
+
 
 func test_versao_atual_e_a_do_sim_world() -> void:
 	assert_eq(_migrations.target_version(), SimWorld.SAVE_VERSION, "quem manda na versão é o SimWorld")
@@ -34,9 +57,64 @@ func test_dict_carimbado_reporta_a_propria_versao() -> void:
 	assert_eq(SaveMigrations.version_of(_v1()), 1, "o carimbo é a fonte da versão")
 
 func test_migrar_save_da_versao_atual_e_identidade() -> void:
-	var dado := _v1()
+	var dado := _v2()
 	var saida := _migrations.migrate(dado) as Dictionary
 	assert_eq(JSON.stringify(saida), JSON.stringify(dado), "save atual atravessa sem ser tocado")
+
+
+# --- v1 → v2: as ferramentas ---
+
+## O bug que criou este passo: a wave 11.2 fez arar e regar dependerem do item
+## na mão. Partida nova recebe as ferramentas; save antigo carrega por cima da
+## entrega inicial e o jogador reabria o jogo sem conseguir fazer nada — e sem
+## nada na tela explicando por quê.
+func test_save_v1_ganha_as_ferramentas() -> void:
+	var migrado := _migrations.migrate(_v1_com_mochila([])) as Dictionary
+
+	assert_not_null(migrado, "save v1 tem que chegar até a versão atual")
+	for item_id in SimFactory.FERRAMENTAS_INICIAIS:
+		assert_true(_tem_item(migrado, item_id),
+			"%s: sem ela o save antigo vira uma partida que não joga" % item_id)
+
+func test_quem_ja_tem_a_ferramenta_nao_ganha_outra() -> void:
+	var migrado := _migrations.migrate(
+		_v1_com_mochila([{"item_id": "enxada", "qtd": 1}])) as Dictionary
+
+	var enxadas := 0
+	for entrada: Variant in _slots_de(migrado):
+		var slot: Dictionary = entrada
+		if String(slot.get("item_id", "")) == "enxada":
+			enxadas += 1
+	assert_eq(enxadas, 1, "a migração duplicou a ferramenta")
+
+func test_a_migracao_preserva_o_resto_do_save() -> void:
+	var migrado := _migrations.migrate(_v1_com_mochila(
+		[{"item_id": "morango", "qtd": 5}])) as Dictionary
+
+	assert_true(_tem_item(migrado, "morango"), "a colheita do jogador sumiu")
+	assert_eq(int(migrado["inventory"]["0"]["dinheiro"]), 3450, "o dinheiro mudou")
+	assert_eq(int(migrado["time"]["dia"]), 7, "o calendário andou sozinho")
+
+func test_mochila_cheia_nao_estoura_a_capacidade() -> void:
+	# Melhor um item a menos que um save corrompido — e o playground tem botão
+	# para recomeçar.
+	var cheia: Array = []
+	for i in 3:
+		cheia.append({"item_id": "morango", "qtd": 5})
+	var save := _v1_com_mochila(cheia)
+	save["inventory"]["0"]["capacity"] = 3
+
+	var migrado := _migrations.migrate(save) as Dictionary
+
+	assert_eq(_slots_de(migrado).size(), 3, "a migração passou por cima da capacidade")
+
+## Um save como o que o jogo gravava antes da wave 11.2.
+func _v1_com_mochila(slots: Array) -> Dictionary:
+	return {
+		"save_version": 1,
+		"time": {"dia": 7, "minuto": 360, "estacao": "primavera"},
+		"inventory": {"0": {"slots": slots, "capacity": 24, "dinheiro": 3450}},
+	}
 
 func test_migrar_nao_altera_o_dicionario_de_entrada() -> void:
 	var dado := _v1()
@@ -58,7 +136,8 @@ func test_passo_registrado_atravessa_e_carimba() -> void:
 		return data)
 
 	var saida := _migrations.migrate(_v0()) as Dictionary
-	assert_eq(int(saida["save_version"]), 1, "quem migra sai carimbado com a versão de destino")
+	assert_eq(int(saida["save_version"]), SimWorld.SAVE_VERSION,
+		"quem migra sai carimbado com a versão de destino")
 	assert_true(saida.has("shipping"), "o passo preencheu o bloco que faltava")
 	assert_eq(int((saida["time"] as Dictionary)["dia"]), 3, "o que já estava lá continua lá")
 

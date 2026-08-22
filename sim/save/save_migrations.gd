@@ -20,10 +20,54 @@ extends RefCounted
 var _versao_alvo: int
 var _passos: Dictionary = {}
 
+## De que versão sai o passo que entrega as ferramentas. Save v1 é anterior à
+## wave 11.2, quando arar e regar passaram a exigir um item na mão.
+const VERSAO_ANTES_DAS_FERRAMENTAS: int = 1
+
 ## A versão de destino é injetável para o teste provar cadeias longas sem
 ## precisar que o jogo já tenha chegado nelas.
 func _init(versao_alvo: int = SimWorld.SAVE_VERSION) -> void:
 	_versao_alvo = versao_alvo
+	_registra_passos_de_producao()
+
+## Os passos que o jogo de verdade usa. Teste que injeta a própria versão-alvo
+## sobrescreve o que quiser: `register_step` é o último a falar.
+func _registra_passos_de_producao() -> void:
+	register_step(VERSAO_ANTES_DAS_FERRAMENTAS, _entrega_as_ferramentas)
+
+## v1 → v2: **põe enxada e regador na mochila de quem já tinha partida.**
+##
+## A wave 11.2 fez arar e regar dependerem do item na mão. Partida nova recebe as
+## ferramentas na entrega inicial, mas o save antigo carrega por cima dela — e o
+## jogador reabria o jogo sem conseguir arar nem regar, sem nada na tela
+## explicando por quê. Isso é o formato do save mudando de um jeito que
+## `from_dict` sozinho não resolve, que é exatamente o que a versão existe para
+## marcar.
+##
+## Só entrega o que falta: quem já tem a ferramenta não ganha uma segunda.
+## Mochila sem espaço fica sem — melhor um item a menos que um save corrompido,
+## e o playground tem botão para recomeçar.
+func _entrega_as_ferramentas(data: Dictionary) -> Dictionary:
+	var inventario: Dictionary = data.get(SimFactory.CHAVE_INVENTORY, {})
+	for chave: Variant in inventario.keys():
+		var jogador: Dictionary = inventario[chave]
+		var slots: Array = jogador.get("slots", [])
+		var capacidade := int(jogador.get("capacity", InventoryState.CAPACITY_PADRAO))
+
+		for item_id in SimFactory.FERRAMENTAS_INICIAIS:
+			if _tem_item(slots, item_id) or slots.size() >= capacidade:
+				continue
+			slots.append({"item_id": item_id, "qtd": 1})
+
+		jogador["slots"] = slots
+	return data
+
+func _tem_item(slots: Array, item_id: String) -> bool:
+	for entrada: Variant in slots:
+		var slot: Dictionary = entrada
+		if String(slot.get("item_id", "")) == item_id:
+			return true
+	return false
 
 ## Versão para a qual este trilho migra.
 func target_version() -> int:

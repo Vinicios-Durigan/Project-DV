@@ -20,7 +20,7 @@ extends RefCounted
 ## Versão do formato do save. Todo snapshot sai carimbado; o load usa o carimbo
 ## para decidir quais migrações aplicar. Só sobe quando o formato mudar de um
 ## jeito que `from_dict` sozinho não resolve.
-const SAVE_VERSION: int = 1
+const SAVE_VERSION: int = 2
 
 ## Chave do carimbo dentro do snapshot. Reservada: nenhum state pode usá-la.
 const CHAVE_VERSAO: String = "save_version"

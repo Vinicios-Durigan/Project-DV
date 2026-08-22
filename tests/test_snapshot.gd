@@ -43,11 +43,17 @@ func _enche_o_mundo() -> void:
 	var p1 := _inventory.get_player(1)
 	p1.dinheiro = 1234
 	p1.capacity = 30
-	p1.slots.append(InventoryState.Slot.new("cenoura", 5))
-	p1.slots.append(InventoryState.Slot.new("semente_abobora", 2))
+	# Capacidade maior pede endereço para todos: desde a wave 11.3 o slot tem
+	# posição fixa, e o snapshot grava um por capacidade. Sem completar aqui, o
+	# state ficaria inconsistente e o roundtrip normalizaria o que o teste
+	# escreveu à mão.
+	p1.garante_tamanho()
+	p1.slots[24] = _slot("cenoura", 5)
+	p1.slots[25] = _slot("semente_abobora", 2)
 	var p2 := _inventory.get_player(2)
 	p2.dinheiro = 77
-	p2.slots.append(InventoryState.Slot.new("morango", 1))
+	# p2 tem a capacidade padrão (24): o último endereço é o 23.
+	p2.slots[23] = _slot("morango", 1)
 
 	var arado := _farm.get_plot(2, 3)
 	arado.arada = true
@@ -62,13 +68,20 @@ func _enche_o_mundo() -> void:
 	_shipping.add("abobora", 3)
 
 
+## O tipo declarado importa: `Array[Slot]` não aceita o retorno de
+## `Slot.new()` visto de fora sem uma variável tipada no meio.
+func _slot(item_id: String, qtd: int) -> InventoryState.Slot:
+	return InventoryState.Slot.new(item_id, qtd)
+
 func _json(data: Dictionary) -> String:
 	return JSON.stringify(data)
 
 
 func test_snapshot_carimba_a_versao_do_save() -> void:
-	assert_eq(SimWorld.SAVE_VERSION, 1, "v1 congela nesta wave")
-	assert_eq(int(_world.snapshot()["save_version"]), 1, "todo snapshot sai carimbado")
+	# v2 desde a wave 11.2: arar e regar passaram a exigir ferramenta na mão, e o
+	# save antigo precisa de um passo que a entregue.
+	assert_eq(SimWorld.SAVE_VERSION, 2, "v2 congela nesta wave")
+	assert_eq(int(_world.snapshot()["save_version"]), 2, "todo snapshot sai carimbado")
 
 func test_snapshot_tem_um_bloco_por_state_registrado() -> void:
 	var data := _world.snapshot()

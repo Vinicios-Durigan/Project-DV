@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CropDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://sim/crops/crop_def.gd" id="1_crop_def"]
+
+[resource]
+script = ExtResource("1_crop_def")
+id = "trigo"
+nome = "Trigo"
+dias_por_estagio = Array[int]([1, 1, 3])
+colheitas_infinitas = false
+rende_por_colheita = 1
+preco_semente = 15
+item_semente = "semente_trigo"
+item_colheita = "trigo"
+bloqueia_movimento = false
+sprites_estagios = Array[String](["res://assets/crops/trigo/trigo_estagio_0.png", "res://assets/crops/trigo/trigo_estagio_1.png", "res://assets/crops/trigo/trigo_estagio_2.png", "res://assets/crops/trigo/trigo_estagio_3.png"])
+sprite_semente = "res://assets/crops/trigo/trigo_semente.png"
+sprite_fruto = "res://assets/crops/trigo/trigo_fruto.png"
