@@ -13,7 +13,9 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | 07 | Ponte — a sim ganha tempo real e disco | concluída | 2026-08-20 |
 | 08 | Playground — Fazenda de Botões | concluída | 2026-08-20 |
 | 09 | ~~Pedido do dia~~ | absorvida pela cidade | 2026-08-21 |
-| 10 | Cidade — beneficiamento e cota | pendente | 2026-08-21 |
+| 10 | Esboço do mundo — locais, viagem e mira | pendente | 2026-08-21 |
+| 11 | A cara do playground — tema, layout e juice | pendente | 2026-08-21 |
+| 12 | Cidade — beneficiamento e cota | pendente | 2026-08-21 |
 
 A wave 09 foi removida em 2026-08-21. "Pedido do dia" e "contrato de
 estabelecimento" eram a mesma mecânica: encomenda de um dono que te conhece e

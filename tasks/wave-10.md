@@ -1,132 +1,92 @@
 ---
 wave: 10
-titulo: Cidade — beneficiamento e cota
+titulo: Esboço do mundo — locais, viagem e mira
 paralelo: nao
 depende_de: [07, 08]
 ---
 
 ## Objetivo
 
-A cidade transforma o que a fazenda não consegue transformar em casa: o jogador
-entrega matéria-prima, paga taxa, espera e **vai buscar** o produto beneficiado.
-
-Primeira wave sob `docs/PRINCIPIOS.md` e primeira sob a regra de nomes em
-português.
+O jogador vira um quadrado que anda: fazenda e cidade são lugares de verdade,
+ir de um ao outro custa o tempo real da caminhada, e **só se age onde se está**.
 
 ## Decisões
 
-- **Um degrau só, o do beneficiamento.** Comprar estabelecimento é wave 11;
-  automação com funcionário é wave 12. O degrau do beneficiamento sozinho já
-  prova a tese: interdependência, custo de tempo e valor agregado.
-- **Dois estabelecimentos, não um.** Moinho (trigo → farinha) e padaria
-  (farinha → pão). A padaria come a saída do moinho — é a cadeia que prova a
-  dependência; um estabelecimento sozinho seria só uma máquina de troca.
-- **Prazo por estabelecimento, em minutos de jogo**, num relógio monotônico
-  (`dia × 1440 + minuto`). Uma unidade só resolve "4 horas" e "3 dias" sem caso
-  especial para a noite: dormir adianta o relógio e a encomenda avança junto.
-- **Cota e capacidade são campos separados** desde já, mesmo que só a cota se
-  mexa nesta wave. Capacidade é o teto do prédio e só muda na wave 12 —
-  registrar agora evita migração depois.
-- **Relação sobe por constância**: uma entrega credita um dia; duas entregas no
-  mesmo dia contam uma. Faltar não zera (PRINCIPIOS §6).
-- **O item beneficiado fica no estabelecimento até a retirada.** Mesmo formato
-  do `ShippingState` do caixote — a retirada é um `ItemGrantedEvent`, igual ao
-  `ItemWithdrawnEvent`. Buscar custa o dia, e é de propósito (PRINCIPIOS §9).
-- **Cota é o atrito** (PRINCIPIOS §7): o moinho não engole a colheita inteira,
-  então a decisão vira *quando e quanto* entregar — e a constância acontece
-  sozinha, sem o jogo pedir.
-- **O caixote continua vendendo tudo**, sem mudança. Ele é a opção preguiçosa e
-  não morre (PRINCIPIOS §3).
-- Ordem de registro no tick: Inventory → Shipping → Farm → **Cidade** → Time. A
-  cidade entra depois do Farm (a colheita da manhã já está na mochila quando a
-  cidade conclui encomendas) e antes do Time.
+- **Posição em pixel é `game/`; o local é `sim/`.** A sim nunca vê coordenada —
+  ela sabe apenas em que local (`FAZENDA`, `CIDADE`) cada jogador está. Quem
+  percebe a travessia da fronteira é `game/`, que despacha `ViajarAction`.
+- **Viagem não tem número mágico.** O custo de ir à cidade é o tempo que o
+  relógio anda enquanto o jogador caminha até lá (1 min de jogo = 0,75s reais,
+  GAMEPLAY §3). A distância do mapa é a ferramenta de balanceamento — cidade
+  longe é cidade cara.
+- **Só age onde está** (decisão de presença, 2026-08-21): regar na cidade é
+  recusado com motivo. O `SistemaLocais` registra **antes** de todos os outros
+  e carimba `rejeitada` + `ActionRejectedEvent` na ação fora de lugar; os
+  sistemas seguintes só olham a flag — padrão que já existe desde a wave 02.
+- **O gate mora centralizado no `SistemaLocais`** (mapa ação → local exigido).
+  É a solução de esboço: nenhum arquivo existente muda. Se o mapa crescer
+  demais, revisita-se na wave da cidade.
+- **Velocidade 4,5 tiles/s** (GAMEPLAY §1), tile de 16px — o esboço usa a
+  velocidade real para o playtest de distância valer.
+- **Regra de jogo nunca desabilita botão nem tecla**: a ação sempre vai à sim,
+  e a recusa volta como evento com motivo (design system aprovado, seção de
+  feedback).
+- **Esboço quer dizer esboço**: retângulos coloridos, sem colisão com
+  obstáculo, sem câmera, sem animação além do necessário. Juice é wave 11.
+- Nomes novos em português (CLAUDE.md, "Tudo em português").
 
 ## Impacto
 
-- **Eventos novos:** `EntregaAceitaEvent` (estabelecimento, item, qtd, taxa,
-  minuto de conclusão), `BeneficiamentoProntoEvent` (estabelecimento, item,
-  qtd), `RetiradaFeitaEvent` (é um `ItemGrantedEvent`), `RelacaoSubiuEvent`
-  (estabelecimento, dias, cota nova).
-- **Muda evento existente:** nenhum.
-- **Muda formato de save:** bloco novo `cidade`, todos os campos com default —
-  sem migração, versão continua 1.
-- **Escuta:** o relógio, para concluir encomenda cujo minuto chegou. Sem
-  dependência de `DayEndedEvent` — encomenda de 4 horas conclui no meio do dia.
-- **Arte necessária:** nenhuma nesta wave. Trigo, farinha e pão entram no
-  `docs/ARTE.md` como pendência de arte para a wave visual.
-- **Toca `game/`:** só o painel do playground.
-- **Conteúdo novo:** cultura trigo + itens farinha e pão. Sem código novo — usa
-  `CropDef` e `ItemDef` existentes.
+- Eventos novos: `JogadorViajouEvent` (player_id, de, para, minuto).
+- Rejeições novas: ação de fazenda fora da fazenda, via `ActionRejectedEvent`
+  com motivo legível.
+- Muda formato de save: bloco novo `locais`, default `FAZENDA` para todo
+  jogador — sem migração, versão continua 1.
+- Arte necessária: nenhuma.
+- Toca `game/`: só `game/dev/`. O `farm_grid` continua existindo como
+  implementação de referência do padrão 2; o mundo de esboço passa a ser o
+  painel central.
 
 ## Tarefas
 
-### 10.1 — A cadeia de itens
-Cria: data/crops/trigo.tres, data/items/trigo.tres, data/items/semente_trigo.tres, data/items/farinha.tres, data/items/pao.tres, tests/test_cadeia_trigo.gd
-Faz: a cultura e os três itens que a cidade vai transformar, registrados nos
-catálogos existentes. Zero código novo. Balanceamento pela fórmula-mestre do
-GAMEPLAY §5: pão vale mais que farinha, que vale mais que trigo, com folga para
-a taxa de beneficiamento.
+### 10.1 — EstadoLocais
+Cria: sim/mundo/estado_locais.gd, tests/test_estado_locais.gd
+Faz: local atual por `player_id`, com default `FAZENDA`, `to_dict`/`from_dict`
+e defaults que preservam save antigo.
 
-### 10.2 — DefEstabelecimento
-Cria: sim/cidade/def_estabelecimento.gd, data/cidade/moinho.tres, data/cidade/padaria.tres, tests/test_def_estabelecimento.gd
+### 10.2 — SistemaLocais
+Cria: sim/mundo/sistema_locais.gd, sim/mundo/viajar_action.gd, sim/mundo/jogador_viajou_event.gd, tests/test_sistema_locais.gd
 Depende de: 10.1
-Faz: recurso que o artista/designer edita — id, nome, item de entrada, item de
-saída, quantos entram por quantos saem, prazo em minutos de jogo, taxa por
-unidade, cota inicial, capacidade total, limiares de relação por degrau. Todo
-campo com default que preserva comportamento.
+Faz: processa `ViajarAction` (muda local, emite `JogadorViajouEvent`) e gateia
+as ações de fazenda pelo mapa ação → local, carimbando rejeição com motivo.
+Registrado primeiro no tick central.
 
-### 10.3 — EstadoCidade
-Cria: sim/cidade/estado_cidade.gd, tests/test_estado_cidade.gd
+### 10.3 — Mundo de esboço
+Cria: game/dev/mundo_esboco.gd
 Depende de: 10.2
-Faz: por estabelecimento — dias com entrega, último dia creditado, cota atual,
-encomendas em andamento (item, qtd, minuto de conclusão) e prontas para
-retirada. `to_dict`/`from_dict` com default em tudo.
+Faz: quadrado do jogador (creme, 16×32 em escala) andando com WASD a 4,5
+tiles/s, dois terrenos (fazenda e cidade) com faixa de passagem, fronteira
+despacha `ViajarAction`. Cores da paleta aprovada, chapadas.
 
-### 10.4 — SistemaCidade
-Cria: sim/cidade/sistema_cidade.gd, sim/cidade/entregar_action.gd, sim/cidade/retirar_action.gd, tests/test_sistema_cidade.gd
+### 10.4 — Mira e ferramentas
+Cria: game/dev/mira_ferramentas.gd
 Depende de: 10.3
-Faz: entregar (valida cota, cobra taxa, agenda conclusão pelo relógio
-monotônico, credita constância uma vez por dia), concluir no tick quando o
-minuto chega, retirar (devolve como `ItemGrantedEvent`). Rejeição por cota
-estourada ou dinheiro insuficiente sai como `ActionRejectedEvent`.
+Faz: retículo no tile à frente do jogador (facing-based, GAMEPLAY §1),
+ferramenta selecionada nas teclas 1–4, clique/espaço despacha a ação da
+ferramenta no tile mirado. Canteiros desenhados pelos dois canais: solo
+claro/escuro = rega, quadrado verde que cresce = estágio.
 
-### 10.5 — Painel da cidade no playground
-Cria: game/dev/painel_cidade.gd
+### 10.5 — Inspetor do tile
+Cria: game/dev/inspetor_tile.gd
 Depende de: 10.4
-Faz: por estabelecimento — relação, cota usada/total, fila de encomendas com
-tempo restante, botões de entregar e retirar. Usa o padrão 2 (mandar ordens) e
-o padrão 3 (escutar avisos) de `docs/receitas/`.
+Faz: painel com o estado cru do tile mirado, lido do `snapshot()` — cultura,
+estágio, regada, pronta. Zero API nova (padrão da wave 08).
 
 ## Em aberto
 
-- **Quantos estabelecimentos o jogo terá no total.** Dois provam a cadeia; o
-  número final decide o tamanho da cidade e o custo de arte. Decidir antes da
-  wave 11.
-- **O ferreiro** — melhora de ferramenta é a função de progressão herdada da
-  mina (PRINCIPIOS §8). Ele entra como estabelecimento, mas a saída dele não é
-  item de inventário e sim upgrade de ferramenta. Formato a decidir.
-- **Capacidade compartilhada com a cidade.** Se o moinho serve a vila inteira, a
-  cota do jogador é uma fatia de algo em uso. Isso é fonte de renda passiva
-  quando ele virar dono — decidir na wave 11.
-- **Trigo é a quinta cultura.** Confirmar com o artista antes de ele fechar a
-  paleta e o lote das quatro originais.
-
-## Herdado da wave 09, para a wave do contrato
-
-A wave 09 ("Pedido do dia") foi absorvida e removida em 2026-08-21: encomenda de
-um dono que te conhece e cobra é a mesma mecânica, só que melhor. O degrau 2 da
-escada (contrato) é a 09 reescrita com dono. Estas decisões dela continuam
-valendo e **não podem se perder**:
-
-- **Sorteio determinístico.** A semente do RNG mora no state e entra no save.
-  Mesmo save, mesma sequência de encomendas — replay e bug report continuam
-  confiáveis. O que muda é quem sorteia: o estabelecimento sorteia o que quer
-  hoje, em vez de o caixote sortear uma cultura da sorte.
-- **O sistema que pede não lê o state de quem vende.** Reage ao evento e guarda
-  o que precisa no próprio state. Regra de comunicação da wave 02.
-- **Dia 1 não tem encomenda.** A primeira chega na manhã do dia 2, junto com a
-  cascata da virada — evita caso especial de boot.
-- **`ItemsSoldEvent.Linha` ganha `multiplicador`** (default 1), para o resumo do
-  dia mostrar o bônus do contrato. Evento gordo, sistema magro.
-- **Descartado com a 09:** bônus solto no caixote sem dono por trás. Recusar uma
-  encomenda tem que custar relação com alguém, senão não é decisão.
+- Terceiro local (`CASA`) — hoje dormir é ação de qualquer lugar; quando a casa
+  virar lugar, dormir pode exigir estar nela. Decidir na wave da cara.
+- Tamanho do mapa de esboço — começar com fazenda e cidade separadas por ~15
+  tiles de caminho e ajustar jogando com o medidor do dia (wave 11).
+- Viagem em velocidade ×60 — o quadrado atravessa o mapa em segundos reais;
+  ver se o gate por local segura ou se precisa de regra extra.
