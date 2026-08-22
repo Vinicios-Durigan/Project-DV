@@ -28,17 +28,15 @@ extends VBoxContainer
 ## ganha 60 linhas por segundo e um `RichTextLabel` infinito engasga.
 const MAX_LINHAS: int = 400
 
-## Largura mínima da coluna do diário, em pixels.
+## Tamanho mínimo do diário, em pixels. Desde a wave 11 ele é a faixa de baixo:
+## a largura é piso, a altura é o que se lê sem rolar.
 const LARGURA: float = 380.0
+const ALTURA: float = 132.0
 
 ## Campos que não viram texto: `SimEvent` não declara nenhum, mas o motor
 ## acrescenta os seus.
 const CAMPOS_IGNORADOS: Array[String] = ["script", "Built-in script"]
 
-const COR_HORA: String = "#7f8c98"
-const COR_EVENTO: String = "#8ab4f8"
-const COR_REJEITADO: String = "#e57373"
-const COR_TICK: String = "#5a6068"
 
 var _bridge: SimBridge
 var _texto: RichTextLabel
@@ -49,10 +47,8 @@ var _minuto: int = TimeState.MINUTO_DEFAULT
 func _ready() -> void:
 	custom_minimum_size = Vector2(LARGURA, 0)
 
-	var titulo := Label.new()
-	titulo.text = "Diário de avisos"
-	add_child(titulo)
-
+	# O título do diário é o botão de colapsar, montado pela casca — aqui só
+	# ficam os controles do painel.
 	var linha := HBoxContainer.new()
 	add_child(linha)
 
@@ -71,6 +67,8 @@ func _ready() -> void:
 	_texto.scroll_following = true
 	_texto.selection_enabled = true
 	_texto.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_texto.custom_minimum_size = Vector2(LARGURA, ALTURA)
+	_texto.theme_type_variation = &"Diario"
 	add_child(_texto)
 
 ## Padrão 3 em duas linhas: recebe o fio, conecta no sinal. Não existe passo
@@ -81,7 +79,7 @@ func setup(bridge: SimBridge) -> void:
 	_bridge.time_scale_changed.connect(_on_time_scale_changed)
 	_le_relogio_do_snapshot()
 	var time: Dictionary = _bridge.get_world().snapshot().get(SimFactory.CHAVE_TIME, {})
-	_escreve(COR_EVENTO, "sessão", "dia=%d estacao=%s" % [
+	_escreve(Paleta.TINTA, "sessão", "dia=%d estacao=%s" % [
 		_dia, String(time.get("estacao", TimeState.ESTACAO_DEFAULT)),
 	])
 
@@ -96,20 +94,44 @@ func _on_sim_event(event: SimEvent) -> void:
 		_minuto = tick.minuto
 		if not _mostrar_minutos.button_pressed:
 			return
-		_escreve(COR_TICK, _nome_da_classe(event), "")
+		_escreve(Paleta.TINTA_3, _nome_da_classe(event), "")
 		return
 
 	_le_relogio_do_snapshot()
-	var cor := COR_REJEITADO if event is ActionRejectedEvent else COR_EVENTO
-	_escreve(cor, _nome_da_classe(event), _detalhes(event))
+	_escreve(_cor_do_evento(event), _nome_da_classe(event), _detalhes(event))
 
 func _on_time_scale_changed(de: float, para: float) -> void:
-	_escreve(COR_HORA, "velocidade", "de=×%s para=×%s" % [de, para])
+	_escreve(Paleta.CEU, "velocidade", "de=×%s para=×%s" % [de, para])
+
+## A cor do assunto do evento: fazenda no verde, tempo no céu, cidade na terra,
+## recusa no alerta, dinheiro no ouro. Quem não se encaixa sai na tinta — linha
+## nova nunca some do diário por falta de cor.
+##
+## É uma cadeia de `if` e não uma tabela `const` de propósito: referência de
+## classe (`ActionRejectedEvent`) não é expressão constante fora do editor, e
+## uma tabela dessas quebra o jogo ao rodar, não ao testar.
+##
+## A ordem importa numa linha só: a recusa vem antes de tudo, porque uma ação
+## de fazenda recusada é recusa, não fazenda.
+func _cor_do_evento(event: SimEvent) -> Color:
+	if event is ActionRejectedEvent:
+		return Paleta.ALERTA
+	if event is MoneyChangedEvent or event is ItemsSoldEvent or event is SeedBoughtEvent:
+		return Paleta.OURO
+	if event is DayEndedEvent:
+		return Paleta.CEU
+	if event is JogadorViajouEvent:
+		return Paleta.TERRA
+	if event is PlotTilledEvent or event is PlotWateredEvent or event is CropPlantedEvent:
+		return Paleta.VERDE
+	if event is CropGrewEvent or event is CropHarvestedEvent or event is CropDiedEvent:
+		return Paleta.VERDE
+	return Paleta.TINTA
 
 ## Uma linha: hora de jogo, nome real do evento, campos.
-func _escreve(cor: String, nome: String, detalhes: String) -> void:
+func _escreve(cor: Color, nome: String, detalhes: String) -> void:
 	_texto.append_text("[color=%s]%s[/color] [color=%s]%s[/color] %s\n" % [
-		COR_HORA, _hora(), cor, nome, _escapa(detalhes),
+		Paleta.hex(Paleta.TINTA_3), _hora(), Paleta.hex(cor), nome, _escapa(detalhes),
 	])
 	while _texto.get_paragraph_count() > MAX_LINHAS:
 		_texto.remove_paragraph(0)

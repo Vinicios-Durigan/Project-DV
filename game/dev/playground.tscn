@@ -1,9 +1,15 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://game/dev/playground.gd" id="1_playground"]
-[ext_resource type="Script" path="res://game/dev/farm_grid.gd" id="2_grid"]
+[ext_resource type="Script" path="res://game/dev/mundo_esboco.gd" id="2_mundo"]
 [ext_resource type="Script" path="res://game/dev/event_feed.gd" id="3_feed"]
 [ext_resource type="Script" path="res://game/dev/status_panel.gd" id="4_status"]
+[ext_resource type="Script" path="res://game/dev/mira_ferramentas.gd" id="5_mira"]
+[ext_resource type="Script" path="res://game/dev/inspetor_tile.gd" id="6_inspetor"]
+[ext_resource type="Theme" path="res://game/dev/tema_playground.tres" id="7_tema"]
+[ext_resource type="Script" path="res://game/dev/aviso_recusa.gd" id="8_aviso"]
+[ext_resource type="Script" path="res://game/dev/medidor_dia.gd" id="9_medidor"]
+[ext_resource type="Script" path="res://game/dev/painel_mochila.gd" id="10_mochila"]
 
 [node name="Playground" type="Control"]
 anchors_preset = 15
@@ -11,33 +17,124 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("7_tema")
 script = ExtResource("1_playground")
 
-[node name="Margem" type="MarginContainer" parent="."]
+[node name="Raiz" type="VBoxContainer" parent="."]
+layout_mode = 1
+mouse_filter = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="Barra" type="PanelContainer" parent="Raiz"]
+layout_mode = 2
+theme_type_variation = &"Barra"
+
+[node name="LinhaBarra" type="HBoxContainer" parent="Raiz/Barra"]
+layout_mode = 2
+
+[node name="Corpo" type="HBoxContainer" parent="Raiz"]
+layout_mode = 2
+mouse_filter = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="Rail" type="PanelContainer" parent="Raiz/Corpo"]
+layout_mode = 2
+theme_type_variation = &"Rail"
+
+[node name="RolagemRail" type="ScrollContainer" parent="Raiz/Corpo/Rail"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="ColunaRail" type="VBoxContainer" parent="Raiz/Corpo/Rail/RolagemRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Grupos"
+
+[node name="ChromeRail" type="VBoxContainer" parent="Raiz/Corpo/Rail/RolagemRail/ColunaRail"]
+layout_mode = 2
+theme_type_variation = &"Grupos"
+
+[node name="StatusPanel" type="VBoxContainer" parent="Raiz/Corpo/Rail/RolagemRail/ColunaRail"]
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("4_status")
+
+[node name="Mundo" type="PanelContainer" parent="Raiz/Corpo"]
+layout_mode = 2
+mouse_filter = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Mundo"
+
+[node name="MundoEsboco" type="Control" parent="Raiz/Corpo/Mundo"]
+layout_mode = 2
+mouse_filter = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("2_mundo")
+
+[node name="MiraFerramentas" type="Control" parent="Raiz/Corpo/Mundo/MundoEsboco"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
+mouse_filter = 2
+script = ExtResource("5_mira")
 
-[node name="Colunas" type="HBoxContainer" parent="Margem"]
+[node name="AvisoRecusa" type="Control" parent="Raiz/Corpo/Mundo/MundoEsboco"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("8_aviso")
+
+[node name="Inspetor" type="PanelContainer" parent="Raiz/Corpo"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_type_variation = &"Inspetor"
 
-[node name="StatusPanel" type="VBoxContainer" parent="Margem/Colunas"]
+[node name="ColunaInspetor" type="VBoxContainer" parent="Raiz/Corpo/Inspetor"]
 layout_mode = 2
-script = ExtResource("4_status")
+theme_type_variation = &"Grupos"
 
-[node name="FarmGrid" type="VBoxContainer" parent="Margem/Colunas"]
+[node name="InspetorTile" type="VBoxContainer" parent="Raiz/Corpo/Inspetor/ColunaInspetor"]
 layout_mode = 2
-size_flags_horizontal = 3
-script = ExtResource("2_grid")
+script = ExtResource("6_inspetor")
 
-[node name="EventFeed" type="VBoxContainer" parent="Margem/Colunas"]
+[node name="MedidorDia" type="VBoxContainer" parent="Raiz/Corpo/Inspetor/ColunaInspetor"]
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("9_medidor")
+
+[node name="Diario" type="PanelContainer" parent="Raiz"]
+layout_mode = 2
+theme_type_variation = &"Diario"
+
+[node name="ColunaDiario" type="VBoxContainer" parent="Raiz/Diario"]
+layout_mode = 2
+
+[node name="CabecalhoDiario" type="HBoxContainer" parent="Raiz/Diario/ColunaDiario"]
+layout_mode = 2
+
+[node name="EventFeed" type="VBoxContainer" parent="Raiz/Diario/ColunaDiario"]
 layout_mode = 2
 script = ExtResource("3_feed")
+
+[node name="PainelMochila" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("10_mochila")

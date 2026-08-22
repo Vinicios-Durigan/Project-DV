@@ -1,0 +1,12 @@
+[gd_resource type="Theme" script_class="TemaPlayground" load_steps=2 format=3]
+
+; O tema do playground. Não guarda cor nem estilo de propósito: quem monta cada
+; estado é `tema_playground.gd`, lendo a `paleta.gd`. Cor cravada aqui faria a
+; paleta deixar de mandar no tema — ver o cabeçalho do script.
+;
+; Não salve este arquivo pelo editor com o inspetor de tema aberto.
+
+[ext_resource type="Script" path="res://game/dev/tema_playground.gd" id="1_tema"]
+
+[resource]
+script = ExtResource("1_tema")
