@@ -100,6 +100,59 @@ func test_cota_nunca_passa_da_capacidade_do_predio() -> void:
 		"cota encostando na capacidade é o que destrava a compra do prédio")
 
 
+# --- A escada vista de fora: o que já subiu e o que falta ---
+
+func test_a_escada_diz_quanto_falta_para_o_proximo_degrau() -> void:
+	var def := DefEstabelecimento.new()
+	def.cota_inicial = 6
+	def.cota_por_degrau = 4
+	def.capacidade = 99
+	def.limiares_relacao = [3, 7, 14]
+
+	assert_eq(def.degraus(), 3, "a escada inteira, não a parte já subida")
+	assert_eq(def.proximo_limiar(0), 3)
+	assert_eq(def.dias_para_o_proximo(0), 3)
+	assert_eq(def.dias_para_o_proximo(2), 1, "falta um dia")
+	assert_eq(def.dias_para_o_proximo(3), 4, "cruzou o 3, agora a mira é o 7")
+	assert_eq(def.ganho_do_proximo_degrau(0), 4, "o degrau vale uma cota a mais")
+
+func test_no_topo_da_escada_nao_falta_nada_e_isso_nao_e_zero() -> void:
+	var def := DefEstabelecimento.new()
+	def.cota_inicial = 6
+	def.cota_por_degrau = 4
+	def.capacidade = 99
+	def.limiares_relacao = [3, 7]
+
+	assert_eq(def.proximo_limiar(7), -1, "acabou a escada")
+	assert_eq(def.dias_para_o_proximo(7), -1,
+		"'faltam 0 dias' mentiria: não falta nada porque não há mais degrau")
+	assert_eq(def.ganho_do_proximo_degrau(7), 0)
+
+func test_a_escada_nao_depende_de_o_tres_estar_em_ordem() -> void:
+	var def := DefEstabelecimento.new()
+	def.capacidade = 99
+	def.limiares_relacao = [14, 3, 7]
+	assert_eq(def.proximo_limiar(0), 3, "o próximo é o menor ainda não alcançado")
+	assert_eq(def.proximo_limiar(5), 7)
+
+func test_degrau_que_nao_cabe_no_predio_nao_promete_cota() -> void:
+	var def := DefEstabelecimento.new()
+	def.cota_inicial = 6
+	def.cota_por_degrau = 10
+	def.capacidade = 12
+	def.limiares_relacao = [3, 7]
+
+	assert_eq(def.ganho_do_proximo_degrau(0), 6, "só o que cabe até o teto")
+	assert_eq(def.ganho_do_proximo_degrau(3), 0,
+		"daqui em diante quem levanta o número é a compra, não a amizade")
+
+func test_definicao_em_branco_nao_tem_escada() -> void:
+	var def := DefEstabelecimento.new()
+	assert_eq(def.degraus(), 0)
+	assert_eq(def.proximo_limiar(0), -1, "sem limiar não há próximo")
+	assert_eq(def.dias_para_o_proximo(0), -1)
+
+
 # --- Os dois estabelecimentos de data/cidade/ ---
 
 func test_moinho_e_padaria_carregam_do_disco() -> void:

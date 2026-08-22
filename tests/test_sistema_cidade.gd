@@ -96,10 +96,10 @@ func _motivo(eventos: Array[SimEvent]) -> String:
 
 func test_a_cidade_entra_entre_o_farm_e_o_time() -> void:
 	var systems := _world.get_systems()
-	assert_eq(systems.size(), 7, "os 7 sistemas do slice")
-	assert_true(systems[4] is SistemaCidade,
+	assert_eq(systems.size(), 8, "os 8 sistemas do slice")
+	assert_true(systems[5] is SistemaCidade,
 		"a cidade conclui depois de a colheita da manhã já estar na mochila")
-	assert_true(systems[6] is TimeSystem, "o calendário continua virando por último")
+	assert_true(systems[7] is TimeSystem, "o calendário continua virando por último")
 
 func test_o_bloco_cidade_entra_no_fim_do_save() -> void:
 	assert_eq(_world.state_keys()[5], SimFactory.CHAVE_CIDADE,
@@ -226,6 +226,55 @@ func test_a_cota_de_hoje_e_a_que_ele_tinha_ao_chegar() -> void:
 		_dorme()
 	assert_eq(_estado.dias_com_entrega(MOINHO), 3)
 	assert_eq(_cidade.cota_de(MOINHO), 10, "cruzou o limiar de 3 dias: 6 + 4")
+
+
+# --- A escada, respondida pela sim ---
+#
+# São perguntas de regra, e por isso vivem aqui e não na tela: a aba de amizade
+# só desenha o que estas funções respondem. Um `if` de degrau em `game/` é bug
+# de arquitetura, mesmo que a tela fique certa.
+
+func test_a_ficha_da_amizade_comeca_zerada() -> void:
+	assert_eq(_cidade.dias_de_relacao(MOINHO), 0)
+	assert_eq(_cidade.degrau_de(MOINHO), 0)
+	assert_eq(_cidade.degraus_de(MOINHO), 4, "a escada dos .tres do slice")
+	assert_eq(_cidade.limiares_de(MOINHO), [3, 7, 14, 24] as Array[int])
+	assert_eq(_cidade.dias_para_o_proximo_degrau(MOINHO), 3)
+	assert_false(_cidade.cota_no_teto(MOINHO), "no começo sobra prédio")
+
+func test_a_escada_anda_com_a_constancia() -> void:
+	_da_item("trigo", 40)
+	for dia in 3:
+		_entrega(MOINHO, "trigo", 2)
+		_retira(MOINHO)
+		_dorme()
+
+	assert_eq(_cidade.degrau_de(MOINHO), 1, "cruzou o limiar de 3 dias")
+	assert_eq(_cidade.dias_para_o_proximo_degrau(MOINHO), 4, "agora a mira é o 7")
+	assert_eq(_cidade.ganho_do_proximo_degrau(MOINHO), 4)
+
+func test_o_contrato_e_um_degrau_da_escada_e_a_sim_diz_quanto_falta() -> void:
+	assert_eq(_cidade.degraus_para_o_contrato(MOINHO), 1,
+		"o dono só encomenda a quem apareceu (PRINCIPIOS §3)")
+	assert_false(_cidade.encomenda_liberada(MOINHO))
+
+	_da_item("trigo", 40)
+	for dia in 3:
+		_entrega(MOINHO, "trigo", 2)
+		_retira(MOINHO)
+		_dorme()
+
+	assert_eq(_cidade.degraus_para_o_contrato(MOINHO), 0)
+	assert_true(_cidade.encomenda_liberada(MOINHO))
+
+func test_estabelecimento_desconhecido_responde_zerado_e_nao_quebra() -> void:
+	assert_eq(_cidade.degrau_de("ferreiro"), 0)
+	assert_eq(_cidade.degraus_de("ferreiro"), 0)
+	assert_eq(_cidade.limiares_de("ferreiro"), [] as Array[int])
+	assert_eq(_cidade.dias_para_o_proximo_degrau("ferreiro"), -1)
+	assert_eq(_cidade.capacidade_de("ferreiro"), 0)
+	assert_eq(_cidade.degraus_para_o_contrato("ferreiro"), -1,
+		"-1 é 'não há contrato aqui', diferente de 'falta subir'")
 
 
 # --- O relógio conclui ---

@@ -70,13 +70,15 @@ const ESPACO_DO_ICONE_HOTBAR: float = 36.0
 const ABA_MOCHILA: String = "mochila"
 const ABA_CIDADE: String = "cidade"
 const ABA_CONTRATOS: String = "contratos"
-const ABAS: Array[String] = [ABA_MOCHILA, ABA_CIDADE, ABA_CONTRATOS]
+const ABA_AMIZADE: String = "amizade"
+const ABAS: Array[String] = [ABA_MOCHILA, ABA_CIDADE, ABA_CONTRATOS, ABA_AMIZADE]
 
 ## O nome de cada aba na tela. Os ids são de máquina; o texto é daqui.
 const NOMES_ABAS: Dictionary = {
 	ABA_MOCHILA: "Mochila",
 	ABA_CIDADE: "Cidade",
 	ABA_CONTRATOS: "Contratos",
+	ABA_AMIZADE: "Amizade",
 }
 
 var _bridge: SimBridge
@@ -96,6 +98,7 @@ var _botoes_aba: Dictionary = {}
 var _conteudo_mochila: Control
 var _cidade: PainelCidade
 var _contratos: PainelContratos
+var _amizade: PainelAmizade
 
 
 func _ready() -> void:
@@ -114,6 +117,7 @@ func setup(bridge: SimBridge) -> void:
 	# filho deste painel agora, então é este nó que o entrega.
 	_cidade.setup(bridge)
 	_contratos.setup(bridge)
+	_amizade.setup(bridge)
 	_atualiza()
 
 
@@ -188,12 +192,33 @@ func abre_contratos(id: String) -> void:
 	mostra_aba(ABA_CONTRATOS)
 	abre()
 
+func amizade_visivel() -> bool:
+	return _amizade.visible
+
+## A ficha de amizade, para quem precisa dela — os testes e a casca.
+func painel_amizade() -> PainelAmizade:
+	return _amizade
+
+## Abre o modal já na ficha de amizade, com o estabelecimento destacado.
+##
+## Nada no mundo chama isto ainda: quem entra no prédio quer o balcão. Existe
+## porque a ficha é irmã do balcão e as duas têm que destacar o mesmo prédio —
+## chegar pela ficha sem destaque seria a única tela da cidade que esquece onde
+## o jogador está.
+func abre_amizade(id: String) -> void:
+	_amizade.destaca(id)
+	mostra_aba(ABA_AMIZADE)
+	abre()
+
 ## Abre o modal já na aba da cidade, com o estabelecimento destacado.
 ##
 ## É o que a porta do mundo chama: quem entrou no moinho não quer procurar o
 ## moinho numa lista.
 func abre_cidade(id: String) -> void:
 	_cidade.destaca(id)
+	# A ficha de amizade destaca junto: trocar de aba com o moinho aberto não
+	# pode cair numa lista onde o moinho é só mais uma linha.
+	_amizade.destaca(id)
 	mostra_aba(ABA_CIDADE)
 	abre()
 
@@ -201,6 +226,7 @@ func _mostra_aba_na_tela() -> void:
 	_conteudo_mochila.visible = _aba == ABA_MOCHILA
 	_cidade.visible = _aba == ABA_CIDADE
 	_contratos.visible = _aba == ABA_CONTRATOS
+	_amizade.visible = _aba == ABA_AMIZADE
 	_titulo.text = String(NOMES_ABAS.get(_aba, _aba)).to_upper()
 	for nome: String in _botoes_aba:
 		(_botoes_aba[nome] as Button).button_pressed = nome == _aba
@@ -382,6 +408,13 @@ func _monta_modal() -> void:
 	_contratos = PainelContratos.new()
 	_contratos.name = "PainelContratos"
 	coluna.add_child(_contratos)
+
+	# A ficha de amizade é aba de **leitura**, e por isso a última: as outras
+	# três têm botão, esta só responde "vale a pena continuar aparecendo". O
+	# balcão mostra a relação como um número cru; aqui ela vira escada.
+	_amizade = PainelAmizade.new()
+	_amizade.name = "PainelAmizade"
+	coluna.add_child(_amizade)
 
 	coluna.add_child(_rodape())
 	_mostra_aba_na_tela()

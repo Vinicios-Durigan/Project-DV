@@ -102,6 +102,44 @@ func cota_com(dias: int) -> int:
 func cota_no_teto(dias: int) -> bool:
 	return capacidade > 0 and cota_com(dias) >= capacidade
 
+## Quantos degraus a escada tem ao todo. Zero é escada nenhuma: a cota nasce e
+## morre no valor inicial.
+func degraus() -> int:
+	return limiares_relacao.size()
+
+## O limiar do próximo degrau, ou `-1` quando a escada acabou.
+##
+## Não assume `limiares_relacao` em ordem: pega o menor limiar ainda não
+## alcançado. O campo é uma lista digitada à mão no inspector, e uma linha fora
+## de ordem não pode fazer a tela mentir sobre o que falta.
+func proximo_limiar(dias: int) -> int:
+	var menor := -1
+	for limiar in limiares_relacao:
+		if dias >= limiar:
+			continue
+		if menor < 0 or limiar < menor:
+			menor = limiar
+	return menor
+
+## Quantos dias com entrega faltam para o próximo degrau, ou `-1` no topo.
+##
+## `-1` e não `0`: "não falta nada" e "a escada acabou" são coisas diferentes, e
+## quem desenha precisa poder escrever "no topo" em vez de "faltam 0 dias".
+func dias_para_o_proximo(dias: int) -> int:
+	var limiar := proximo_limiar(dias)
+	return -1 if limiar < 0 else maxi(limiar - dias, 0)
+
+## Quanto a cota sobe quando o próximo degrau cair.
+##
+## Zero no topo da escada — e zero também quando a cota já encostou na
+## capacidade: o degrau vem, mas não cabe mais nada dentro do prédio. Daí em
+## diante quem levanta o número é a compra, não a amizade (PRINCIPIOS §4).
+func ganho_do_proximo_degrau(dias: int) -> int:
+	var limiar := proximo_limiar(dias)
+	if limiar < 0:
+		return 0
+	return cota_com(limiar) - cota_com(dias)
+
 ## A entrega vem em lote cheio? Sobra não é aceita — ela sumiria sem virar nada.
 func lote_valido(qtd: int) -> bool:
 	return qtd > 0 and qtd % entram == 0

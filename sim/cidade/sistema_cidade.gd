@@ -89,6 +89,73 @@ func cota_de(id: String) -> int:
 		return 0
 	return def.cota_com(_estado.dias_com_entrega(id))
 
+## Quantos dias diferentes tiveram entrega aqui. É a moeda da amizade: sobe por
+## constância, não por volume nem por dinheiro, e não zera com a ausência
+## (PRINCIPIOS §6).
+func dias_de_relacao(id: String) -> int:
+	return _estado.dias_com_entrega(id)
+
+## Em que degrau da escada o jogador está aqui.
+func degrau_de(id: String) -> int:
+	var def := def_de(id)
+	return def.degrau_com(_estado.dias_com_entrega(id)) if def != null else 0
+
+## Quantos degraus a escada deste estabelecimento tem ao todo.
+func degraus_de(id: String) -> int:
+	var def := def_de(id)
+	return def.degraus() if def != null else 0
+
+## Os limiares da escada, em ordem crescente. É a escada inteira, para quem
+## precisa desenhá-la — a de trás já cumprida e a da frente ainda por subir.
+func limiares_de(id: String) -> Array[int]:
+	var def := def_de(id)
+	if def == null:
+		return []
+	var out: Array[int] = def.limiares_relacao.duplicate()
+	out.sort()
+	return out
+
+## O limiar do próximo degrau, ou `-1` no topo da escada.
+func proximo_limiar_de(id: String) -> int:
+	var def := def_de(id)
+	return def.proximo_limiar(_estado.dias_com_entrega(id)) if def != null else -1
+
+## Quantos dias com entrega faltam para o próximo degrau, ou `-1` no topo.
+func dias_para_o_proximo_degrau(id: String) -> int:
+	var def := def_de(id)
+	return def.dias_para_o_proximo(_estado.dias_com_entrega(id)) if def != null else -1
+
+## Quanto a cota sobe quando o próximo degrau cair.
+func ganho_do_proximo_degrau(id: String) -> int:
+	var def := def_de(id)
+	return def.ganho_do_proximo_degrau(_estado.dias_com_entrega(id)) if def != null else 0
+
+## O teto do prédio. `cota` é sua e sobe com amizade; `capacidade` é dele e só
+## muda comprando — são números diferentes de propósito (PRINCIPIOS §4).
+func capacidade_de(id: String) -> int:
+	var def := def_de(id)
+	return def.capacidade if def != null else 0
+
+## A cota encostou no teto? É o sinal que destrava a compra na wave do dono, e é
+## o único motivo de a tela mostrar a capacidade ao lado da cota.
+func cota_no_teto(id: String) -> bool:
+	var def := def_de(id)
+	return def.cota_no_teto(_estado.dias_com_entrega(id)) if def != null else false
+
+## Este dono já encomenda? Quem responde é a escada: só quem apareceu ganha
+## pedido (PRINCIPIOS §3).
+func encomenda_liberada(id: String) -> bool:
+	var def := def_de(id)
+	return def.encomenda_com(_estado.dias_com_entrega(id)) if def != null else false
+
+## Quantos degraus ainda faltam para o dono encomendar. Zero quando ele já
+## encomenda, e `-1` quando este `.tres` não tem contrato nenhum ligado.
+func degraus_para_o_contrato(id: String) -> int:
+	var def := def_de(id)
+	if def == null or def.contrato_prazo_dias <= 0:
+		return -1
+	return maxi(def.contrato_degrau_minimo - degrau_de(id), 0)
+
 ## Tem lote pronto esperando alguém buscar?
 ##
 ## Existe para `game/` poder avisar sem abrir painel: o prédio no mapa acende
