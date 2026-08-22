@@ -61,6 +61,27 @@ botões; o jogo visual (sprites, animações, mapa) só implementa o que já foi
 jogado e aprovado no playground. Mecânica sem painel no playground é wave
 incompleta.
 
+### A ordem do projeto — decidida em 2026-08-21
+
+**Primeiro todas as mecânicas, jogadas e aprovadas no playground. Só depois o
+jogo visual na Godot.**
+
+Não se alterna entre uma wave de regra e uma de tela. O jogo inteiro é jogado
+por botão, do começo ao fim, antes de a primeira cena de verdade existir.
+
+O motivo: descobrir que uma mecânica não é divertida custa uma tarde no
+playground e custa semanas depois que a arte foi desenhada em cima dela. Arte
+feita para mecânica que vai mudar é arte jogada fora.
+
+Consequência prática: nenhuma wave de `game/` (mapa, personagem, ferramentas,
+HUD) é planejada enquanto houver mecânica de `sim/` na fila. Se aparecer pressão
+para "ver algo na tela", a resposta é o playground — ele já mostra o jogo
+inteiro funcionando.
+
+Isso **não** libera escopo infinito: a lista de mecânicas do slice é fechada e
+está no manual. Mecânica que não está na lista entra depois do beta visual, não
+antes.
+
 ## Documentação é visual
 
 O time tem duas pessoas e uma delas não lê código. Documentação só em `.md` não
