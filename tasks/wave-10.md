@@ -110,3 +110,23 @@ o padrão 3 (escutar avisos) de `docs/receitas/`.
   quando ele virar dono — decidir na wave 11.
 - **Trigo é a quinta cultura.** Confirmar com o artista antes de ele fechar a
   paleta e o lote das quatro originais.
+
+## Herdado da wave 09, para a wave do contrato
+
+A wave 09 ("Pedido do dia") foi absorvida e removida em 2026-08-21: encomenda de
+um dono que te conhece e cobra é a mesma mecânica, só que melhor. O degrau 2 da
+escada (contrato) é a 09 reescrita com dono. Estas decisões dela continuam
+valendo e **não podem se perder**:
+
+- **Sorteio determinístico.** A semente do RNG mora no state e entra no save.
+  Mesmo save, mesma sequência de encomendas — replay e bug report continuam
+  confiáveis. O que muda é quem sorteia: o estabelecimento sorteia o que quer
+  hoje, em vez de o caixote sortear uma cultura da sorte.
+- **O sistema que pede não lê o state de quem vende.** Reage ao evento e guarda
+  o que precisa no próprio state. Regra de comunicação da wave 02.
+- **Dia 1 não tem encomenda.** A primeira chega na manhã do dia 2, junto com a
+  cascata da virada — evita caso especial de boot.
+- **`ItemsSoldEvent.Linha` ganha `multiplicador`** (default 1), para o resumo do
+  dia mostrar o bônus do contrato. Evento gordo, sistema magro.
+- **Descartado com a 09:** bônus solto no caixote sem dono por trás. Recusar uma
+  encomenda tem que custar relação com alguém, senão não é decisão.
