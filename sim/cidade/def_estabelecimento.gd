@@ -68,6 +68,22 @@ const PRAZO_PADRAO: int = 240
 ## Dias com entrega necessários para cada degrau, em ordem crescente.
 @export var limiares_relacao: Array[int] = []
 
+@export_group("Contrato")
+## Degrau de relação a partir do qual o dono passa a encomendar. Zero libera
+## desde o primeiro dia — o default é 1 porque a escada não pula degrau: só
+## quem foi constante ganha pedido (PRINCIPIOS §3).
+@export_range(0, 9, 1) var contrato_degrau_minimo: int = 1
+## Quantos dias o jogador tem para cumprir depois de aceitar. **Zero desliga o
+## contrato neste estabelecimento** — é o default que fecha a porta: `.tres`
+## sem esta seção preenchida nunca encomenda nada.
+@export_range(0, 28, 1) var contrato_prazo_dias: int = 0
+## Menos e mais lotes de `item_entrada` que uma encomenda pode pedir.
+@export_range(1, 99, 1) var contrato_lotes_min: int = 1
+@export_range(1, 99, 1) var contrato_lotes_max: int = 1
+## Quanto o contrato paga em cima do preço de venda do item pedido. 1.0 = o
+## mesmo do caixote, e aí não haveria motivo para aceitar.
+@export_range(1.0, 5.0, 0.05) var contrato_multiplicador: float = 1.0
+
 
 ## Quantos degraus de relação `dias` com entrega já valeram. O limiar conta no
 ## dia em que é alcançado.
@@ -102,6 +118,17 @@ func saida_de(qtd: int) -> int:
 ## Quanto custa beneficiar `qtd` unidades de entrada.
 func taxa_de(qtd: int) -> int:
 	return maxi(qtd, 0) * taxa_por_unidade
+
+## Este dono já encomenda, com essa constância? Prazo zero desliga o contrato
+## no `.tres`; o degrau mínimo é a escada — só quem apareceu ganha pedido.
+func encomenda_com(dias: int) -> bool:
+	return contrato_prazo_dias > 0 and degrau_com(dias) >= contrato_degrau_minimo
+
+## Quanto o contrato paga por `qtd` unidades cujo preço de venda é
+## `preco_unitario`. O total é combinado na oferta e não se recalcula depois:
+## rebalancear o `.tres` no meio do prazo não muda o que foi prometido.
+func pagamento_de(qtd: int, preco_unitario: int) -> int:
+	return roundi(maxi(qtd, 0) * maxi(preco_unitario, 0) * contrato_multiplicador)
 
 
 ## Carrega todo `.tres` do diretório em `id -> DefEstabelecimento`.

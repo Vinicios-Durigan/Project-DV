@@ -77,7 +77,9 @@ func _local_exigido(action: SimAction) -> String:
 			or action is WaterPlotAction \
 			or action is HarvestCropAction:
 		return EstadoLocais.FAZENDA
-	if action is EntregarAction or action is RetirarAction:
+	if action is EntregarAction or action is RetirarAction \
+			or action is ResponderContratoAction \
+			or action is CumprirContratoAction:
 		return EstadoLocais.CIDADE
 	return ""
 

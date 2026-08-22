@@ -38,6 +38,13 @@ extends SimSystem
 ## Moinho e padaria são `data/cidade/*.tres`. Estabelecimento novo é `.tres`
 ## novo, zero código — a mesma promessa de cultura e item.
 
+## O que um contrato vale em amizade. Três dias de uma vez porque o contrato é o
+## caminho rápido de contrato para dono; dois perdidos ao estourar prazo porque
+## quebrar promessa tem que doer menos do que cumprir compensa — senão aceitar
+## nunca valeria o risco. Chute calibrado pela escada, para ajustar jogando.
+const DIAS_POR_CONTRATO: int = 3
+const DIAS_PERDIDOS_NO_ESTOURO: int = 2
+
 const MOTIVO_ESTABELECIMENTO_DESCONHECIDO: String = "estabelecimento_desconhecido"
 const MOTIVO_ITEM_ERRADO: String = "item_errado"
 const MOTIVO_LOTE_INCOMPLETO: String = "lote_incompleto"
@@ -144,6 +151,10 @@ func react(event: SimEvent) -> Array[SimEvent]:
 		var virada := event as DayEndedEvent
 		return _acerta_relogio(EstadoCidade.minuto_monotonico(
 			virada.dia_novo, TimeSystem.MINUTO_ACORDAR))
+	if event is ContratoCumpridoEvent:
+		return _premia_contrato(event as ContratoCumpridoEvent)
+	if event is ContratoFalhouEvent:
+		return _cobra_a_promessa(event as ContratoFalhouEvent)
 	return []
 
 
@@ -215,6 +226,51 @@ func _credita_constancia(action: EntregarAction, def: DefEstabelecimento) -> Arr
 	subiu.dias = dias
 	subiu.cota = cota
 	return [subiu]
+
+
+# --- O preço de um contrato, em amizade ---
+
+## Compromisso cumprido vale vários dias de uma vez. É o que faz o contrato ser
+## degrau, e não só uma venda melhor: ele acelera a cota até a capacidade, que é
+## o que destrava a compra (PRINCIPIOS §3 e §4).
+##
+## Quem legisla sobre relação é a cidade. O `SistemaContratos` só avisa que o
+## jogador cumpriu — ele não sabe o que é cota.
+func _premia_contrato(evento: ContratoCumpridoEvent) -> Array[SimEvent]:
+	var def := def_de(evento.estabelecimento)
+	if def == null:
+		return []
+	var dias := _estado.credita_bonus(evento.estabelecimento, _estado.dia_do_jogo(),
+			DIAS_POR_CONTRATO)
+	var cota := def.cota_com(dias)
+	_estado.define_cota(evento.estabelecimento, cota)
+
+	var subiu := RelacaoSubiuEvent.new()
+	subiu.player_id = evento.player_id
+	subiu.estabelecimento = evento.estabelecimento
+	subiu.dias = dias
+	subiu.cota = cota
+	return [subiu]
+
+## Promessa quebrada custa. **Só** o prazo estourado chega até aqui: recusar a
+## oferta e deixá-la expirar são de graça, porque relação não pune ausência
+## (PRINCIPIOS §6) — o que se cobra é ter dito sim e não ter aparecido.
+func _cobra_a_promessa(evento: ContratoFalhouEvent) -> Array[SimEvent]:
+	if evento.motivo != ContratoFalhouEvent.MOTIVO_ESTOURADO:
+		return []
+	var def := def_de(evento.estabelecimento)
+	if def == null:
+		return []
+	var dias := _estado.debita_dias(evento.estabelecimento, DIAS_PERDIDOS_NO_ESTOURO)
+	var cota := def.cota_com(dias)
+	_estado.define_cota(evento.estabelecimento, cota)
+
+	var caiu := RelacaoCaiuEvent.new()
+	caiu.player_id = evento.player_id
+	caiu.estabelecimento = evento.estabelecimento
+	caiu.dias = dias
+	caiu.cota = cota
+	return [caiu]
 
 
 # --- Retirar ---

@@ -69,6 +69,8 @@ func handle(action: SimAction) -> Array[SimEvent]:
 func react(event: SimEvent) -> Array[SimEvent]:
 	if event is ItemsSoldEvent:
 		return _receive_sale(event as ItemsSoldEvent)
+	if event is DinheiroConcedidoEvent:
+		return _recebe_pagamento(event as DinheiroConcedidoEvent)
 	if not event is ItemGrantedEvent:
 		return []
 	var granted := event as ItemGrantedEvent
@@ -77,6 +79,17 @@ func react(event: SimEvent) -> Array[SimEvent]:
 	action.item_id = granted.item_id
 	action.qtd = granted.qtd
 	return _add_item(action)
+
+## Uma mecânica pagou: a carteira reage, como reage a um item concedido. Só
+## crédito — valor zero ou negativo não mexe em nada, porque cobrar é assunto de
+## `AddMoneyAction`, que pode ser recusada por saldo.
+func _recebe_pagamento(pagamento: DinheiroConcedidoEvent) -> Array[SimEvent]:
+	if pagamento.valor <= 0:
+		return []
+	var action := AddMoneyAction.new()
+	action.player_id = pagamento.player_id
+	action.valor = pagamento.valor
+	return _add_money(action)
 
 ## O caixote vendeu: quem dormiu recebe. Total zero (só ferramenta no caixote)
 ## não mexe na carteira — sem mudança, sem evento.

@@ -28,6 +28,7 @@ const CHAVE_SHIPPING: String = "shipping"
 ## Bloco novo entra no FIM do arquivo — save antigo carrega sem migração.
 const CHAVE_LOCAIS: String = "locais"
 const CHAVE_CIDADE: String = "cidade"
+const CHAVE_CONTRATOS: String = "contratos"
 
 ## Enquanto não existe co-op, o jogador é sempre o 0 — mas o id existe desde já.
 const PLAYER_PADRAO: int = 0
@@ -53,6 +54,7 @@ var _farm: FarmState
 var _shipping: ShippingState
 var _locais: EstadoLocais
 var _cidade: EstadoCidade
+var _contratos: EstadoContratos
 var _resolvedor: ResolvedorUso
 
 ## As definições dos estabelecimentos são carregadas pelo próprio
@@ -98,6 +100,9 @@ func get_estado_locais() -> EstadoLocais:
 func get_estado_cidade() -> EstadoCidade:
 	return _cidade
 
+func get_estado_contratos() -> EstadoContratos:
+	return _contratos
+
 ## O mundo pronto para jogar: sistemas na ordem fixa, states no save e a mochila
 ## do primeiro dia. Quem vai carregar um save chama `restore()` logo depois — o
 ## restore substitui todo bloco registrado, inclusive o da partida nova.
@@ -108,6 +113,7 @@ func build() -> SimWorld:
 	_shipping = ShippingState.new()
 	_locais = EstadoLocais.new()
 	_cidade = EstadoCidade.new()
+	_contratos = EstadoContratos.new()
 
 	var world := SimWorld.new()
 	# A ordem é regra de jogo: barrar fora de lugar → validar → vender →
@@ -119,6 +125,11 @@ func build() -> SimWorld:
 	world.register_system(ShippingSystem.new(_shipping, _items))
 	world.register_system(FarmSystem.new(_farm, _crops))
 	world.register_system(SistemaCidade.new(_cidade, _dir_estabelecimentos))
+	# Depois da Cidade: o contrato é o degrau seguinte da mesma escada e reage ao
+	# `RelacaoSubiuEvent` que ela emite. A posição só importa para as ações —
+	# `CumprirContratoAction` estende `RemoveItemAction`, então tem que vir
+	# depois do Inventory, que é quem tira o item.
+	world.register_system(SistemaContratos.new(_contratos, _dir_estabelecimentos, _items))
 	world.register_system(TimeSystem.new(_time))
 
 	# A ordem de registro é a ordem dos blocos no arquivo de save. Bloco novo
@@ -129,6 +140,7 @@ func build() -> SimWorld:
 	world.register_state(CHAVE_SHIPPING, _shipping)
 	world.register_state(CHAVE_LOCAIS, _locais)
 	world.register_state(CHAVE_CIDADE, _cidade)
+	world.register_state(CHAVE_CONTRATOS, _contratos)
 
 	# Depois dos states, porque ele lê dois deles. Não entra na fila do tick: o
 	# resolvedor responde perguntas, não trata ações.

@@ -96,10 +96,10 @@ func _motivo(eventos: Array[SimEvent]) -> String:
 
 func test_a_cidade_entra_entre_o_farm_e_o_time() -> void:
 	var systems := _world.get_systems()
-	assert_eq(systems.size(), 6, "os 6 sistemas do slice")
+	assert_eq(systems.size(), 7, "os 7 sistemas do slice")
 	assert_true(systems[4] is SistemaCidade,
 		"a cidade conclui depois de a colheita da manhã já estar na mochila")
-	assert_true(systems[5] is TimeSystem, "o calendário continua virando por último")
+	assert_true(systems[6] is TimeSystem, "o calendário continua virando por último")
 
 func test_o_bloco_cidade_entra_no_fim_do_save() -> void:
 	assert_eq(_world.state_keys()[5], SimFactory.CHAVE_CIDADE,

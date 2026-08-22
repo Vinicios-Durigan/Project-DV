@@ -75,7 +75,7 @@ que ainda não veio.
 
 ## Tarefas
 
-### 13.1 — EstadoContratos
+### 13.1 — EstadoContratos ✅
 Cria: `sim/cidade/estado_contratos.gd`, `tests/test_estado_contratos.gd`
 Faz: o contrato como dado — estabelecimento, item, qtd, pagamento, minuto de
 oferta, minuto de vencimento, situação (oferecido/aceito/cumprido/falho) — mais
@@ -83,7 +83,7 @@ o degrau conhecido por estabelecimento e a semente do RNG. `to_dict`/`from_dict`
 com default em todo campo. Sem lógica de sorteio e sem relógio próprio: o
 vencimento é minuto monotônico, calculado por quem sorteia.
 
-### 13.2 — SistemaContratos
+### 13.2 — SistemaContratos ✅
 Cria: `sim/cidade/sistema_contratos.gd`, `tests/test_sistema_contratos.gd`
 Depende de: 13.1
 Faz: reage a `RelacaoSubiuEvent` guardando o degrau; reage a `DayEndedEvent`
@@ -94,7 +94,7 @@ aceito e emitir `ContratoFalhouEvent`; trata `ResponderContratoAction` e
 `minutos_para_vencer()`. Registra no tick em `sim/sim_factory.gd`, depois da
 Cidade.
 
-### 13.3 — O canal de pagamento
+### 13.3 — O canal de pagamento ✅
 Cria: `sim/items/dinheiro_concedido_event.gd`, `tests/test_dinheiro_concedido.gd`
 Depende de: 13.2
 Faz: o evento que concede dinheiro sem ação, irmão do `ItemGrantedEvent`, e o
@@ -102,7 +102,7 @@ caso novo no `react` do `InventorySystem`. Qualquer mecânica futura que premie
 em dinheiro — pescaria, festival — passa por aqui em vez de inventar o próprio
 caminho.
 
-### 13.4 — Constância acelerada
+### 13.4 — Constância acelerada ✅
 Cria: `tests/test_constancia_contrato.gd` (edita `sim/cidade/estado_cidade.gd` e
 `sim/cidade/sistema_cidade.gd`)
 Depende de: 13.2
@@ -112,7 +112,7 @@ emitindo `RelacaoSubiuEvent` com a cota nova quando o degrau muda. O crédito
 respeita a regra do dia único: contrato cumprido no mesmo dia de uma entrega não
 conta duas vezes pelo mesmo dia.
 
-### 13.5 — A aba de contratos no playground
+### 13.5 — A aba de contratos no playground ✅
 Cria: `game/dev/painel_contratos.gd`
 Depende de: 13.2, 13.4
 Faz: aba própria no Tab, ao lado da mochila e da cidade — oferta com aceitar e
@@ -121,8 +121,40 @@ ou falho) na cara. Selo no prédio do mapa quando há oferta esperando resposta.
 Reusa os rótulos em vez de recriar nós a cada evento — o sintoma da receita 3 §4
 já custou uma pendência na 12.1.
 
+## O que saiu diferente do planejado
+
+- **Seis eventos, não cinco.** `RelacaoCaiuEvent` nasceu na 13.4. Emitir
+  `RelacaoSubiuEvent` com um número menor mentiria no nome para quem lê o
+  diário, e renomear o evento da wave 12 é rename retroativo — proibido.
+- **Quatro arquivos existentes tocados, não três.** O quarto é
+  `sim/mundo/sistema_locais.gd`: `ResponderContratoAction` e
+  `CumprirContratoAction` entraram na lista de ações que exigem estar na cidade.
+  Sem isso a decisão central da wave — *cumprir é no prédio* — não valeria nada,
+  e a checagem cairia em `game/`, que não pode decidir regra.
+- **`EstadoContratos` tem relógio próprio.** A tarefa 13.1 dizia "sem relógio
+  próprio". Não fecha: **aceitar é ação**, e o prazo tem que ser contado a
+  partir de agora, sem evento na mão para dizer que horas são. O relógio é
+  copiado dos eventos do tempo, como o da cidade, e entra no save.
+- **`DefEstabelecimento` ganhou cinco campos** (`contrato_degrau_minimo`,
+  `contrato_prazo_dias`, `contrato_lotes_min`/`max`, `contrato_multiplicador`),
+  todos com default que fecha a porta: prazo zero desliga o contrato, então
+  `.tres` antigo carrega sem encomendar nada.
+- **A oferta é garantida onde há espaço; o RNG decide só o tamanho.** Sortear
+  *se* haveria pedido deixaria a mecânica invisível numa partida azarada. A
+  semente continua no save, como a decisão herdada da 09 exige.
+- **A aba mexeu em três arquivos de `game/`**, não um: `painel_contratos.gd`
+  (novo), `painel_mochila.gd` (a aba no Tab) e `mundo_esboco.gd` (o selo
+  `PEDIDO` na fachada, que vem na frente do beneficiamento porque a oferta tem
+  prazo e a farinha pronta não).
+
 ## Em aberto
 
+- **Ruído intermitente na suíte.** `playground_window.gd:92` resume um `await`
+  depois de a janela ter sido liberada e o GUT credita o erro ao teste que
+  estiver correndo — numa rodada em três, um teste qualquer falha por
+  "Unexpected Errors". Não é desta wave (nenhum arquivo dela toca a janela) e é
+  parente dos 32 órfãos de nó anotados na wave 12: o conserto é o mesmo, montar
+  a casca no `_ready`.
 - **Quantos dias de constância um contrato deve valer.** 3 para cumprir e 2 para
   falhar são chute calibrado pela escada, não medida — a resposta vem de jogar
   com os dois estabelecimentos e ver quanto tempo leva para a cota bater na

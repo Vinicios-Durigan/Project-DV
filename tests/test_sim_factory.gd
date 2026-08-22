@@ -21,18 +21,20 @@ func _sistema(indice: int) -> SimSystem:
 	return _world.get_systems()[indice]
 
 
-func test_monta_os_cinco_sistemas_na_ordem_fixa() -> void:
+func test_monta_os_sete_sistemas_na_ordem_fixa() -> void:
 	var systems := _world.get_systems()
-	assert_eq(systems.size(), 6, "os 6 sistemas do slice")
+	assert_eq(systems.size(), 7, "os 7 sistemas do slice")
 	assert_true(_sistema(0) is SistemaLocais, "1. Locais barra fora de lugar antes de alguém cobrar")
 	assert_true(_sistema(1) is InventorySystem, "2. Inventory valida e cobra")
 	assert_true(_sistema(2) is ShippingSystem, "3. Shipping vende antes de o dia virar")
 	assert_true(_sistema(3) is FarmSystem, "4. Farm cresce depois da venda")
 	assert_true(_sistema(4) is SistemaCidade, "5. Cidade age com a colheita já na mochila")
-	assert_true(_sistema(5) is TimeSystem, "6. Time vira o calendário por último")
+	assert_true(_sistema(5) is SistemaContratos, "6. Contratos, o degrau seguinte da cidade")
+	assert_true(_sistema(6) is TimeSystem, "7. Time vira o calendário por último")
 
 func test_registra_todo_state_no_save_na_ordem_do_formato() -> void:
-	assert_eq(_world.state_keys(), ["time", "inventory", "farm", "shipping", "locais", "cidade"],
+	assert_eq(_world.state_keys(),
+		["time", "inventory", "farm", "shipping", "locais", "cidade", "contratos"],
 		"as chaves são o formato do save — GAMEPLAY §10; bloco novo entra no fim")
 
 func test_o_state_registrado_e_o_mesmo_que_o_sistema_usa() -> void:

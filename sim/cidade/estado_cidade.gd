@@ -205,6 +205,26 @@ func credita_dia(id: String, dia: int) -> bool:
 	reg.dias_com_entrega += 1
 	return true
 
+## Credita um bônus de constância de uma vez só — o preço de um compromisso
+## cumprido, e não de mais um dia de rotina. Devolve os dias resultantes.
+##
+## Carimba `dia` como creditado: uma entrega comum no mesmo dia não soma outro
+## por cima do bônus. Dois contratos diferentes no mesmo dia **somam**, porque
+## cada um foi uma promessa distinta — a regra do dia único é sobre entrega,
+## não sobre compromisso.
+func credita_bonus(id: String, dia: int, quantos: int) -> int:
+	var reg := _registro(id)
+	reg.dias_com_entrega += maxi(quantos, 0)
+	reg.ultimo_dia_creditado = maxi(reg.ultimo_dia_creditado, dia)
+	return reg.dias_com_entrega
+
+## Tira dias de constância, com piso em zero. Só promessa quebrada chega aqui:
+## faltar não desconta nada (PRINCIPIOS §6). Devolve os dias resultantes.
+func debita_dias(id: String, quantos: int) -> int:
+	var reg := _registro(id)
+	reg.dias_com_entrega = maxi(reg.dias_com_entrega - maxi(quantos, 0), 0)
+	return reg.dias_com_entrega
+
 ## Escreve a cota vigente, para a tela e o save a lerem.
 func define_cota(id: String, valor: int) -> void:
 	_registro(id).cota = maxi(valor, 0)

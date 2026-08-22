@@ -29,6 +29,12 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | `BeneficiamentoProntoEvent` | `SistemaCidade` (reage ao relógio, quando o minuto de conclusão chega) | `game/dev/painel_cidade.gd` — a linha da fila vira "pronta". Não tem `player_id`: ninguém agiu, foi o tempo |
 | `RetiradaFeitaEvent` | `SistemaCidade` (`RetirarAction`, com a taxa já cobrada pelo inventário) | `InventorySystem` (é um `ItemGrantedEvent`) — o produto entra na mochila |
 | `RelacaoSubiuEvent` | `SistemaCidade` (primeira entrega do dia num estabelecimento) | `game/dev/painel_cidade.gd` — atualiza "relação N dias · cota X/Y" |
+| `RelacaoCaiuEvent` | `SistemaCidade` (contrato aceito cujo prazo venceu) | `SistemaContratos` — a cópia da constância acompanha a queda. Só quebra de promessa chega aqui: recusar e deixar expirar são de graça (PRINCIPIOS §6) |
+| `ContratoOferecidoEvent` | `SistemaContratos` (virada do dia, onde o dono já é amigo e a mesa está livre) | `game/dev/painel_contratos.gd` — põe a encomenda na mesa; `game/dev/mundo_esboco.gd` — o selo `PEDIDO` na fachada. Não tem `player_id`: ninguém agiu, foi a manhã |
+| `ContratoAceitoEvent` | `SistemaContratos` (`ResponderContratoAction` com `aceita = true`) | `game/dev/painel_contratos.gd` — troca a oferta pela contagem regressiva de cumprir |
+| `ContratoCumpridoEvent` | `SistemaContratos` (`CumprirContratoAction`, já cobrada pelo inventário) | `SistemaCidade` — credita 3 dias de constância de uma vez; `game/dev/painel_contratos.gd` — mostra o pagamento. Sai acompanhado do `DinheiroConcedidoEvent` |
+| `ContratoFalhouEvent` | `SistemaContratos` (recusa do jogador, oferta expirada ou prazo estourado — o `motivo` distingue) | `SistemaCidade` — **só** o `estourado` custa 2 dias; `game/dev/painel_contratos.gd` — limpa a mesa e conta o que houve |
+| `DinheiroConcedidoEvent` | qualquer mecânica que pague sem ser o caixote (hoje `SistemaContratos`) | `InventorySystem` — soma na carteira. O irmão do `ItemGrantedEvent`; só crédito, porque cobrar precisa de ação que possa ser recusada |
 
 ## Como o evento chega em `game/`
 
@@ -50,14 +56,22 @@ de cor.
 
 ## A ordem dos sistemas é regra de jogo
 
-Desde a wave 12 o tick central roda **Locais → Inventory → Shipping → Farm →
-Cidade → Time**. O `SistemaLocais` é o primeiro por um motivo concreto, não por
+Desde a wave 13 o tick central roda **Locais → Inventory → Shipping → Farm →
+Cidade → Contratos → Time**. O `SistemaLocais` é o primeiro por um motivo concreto, não por
 organização: `PlantCropAction` estende `RemoveItemAction`, então a semente sai
 da mochila ao passar pelo `InventorySystem`. Se o carimbo de "fora do lugar"
 chegasse depois, plantar na cidade cobraria a semente de uma ação recusada.
 
 A `SistemaCidade` entra depois do Farm — a colheita da manhã já está na mochila
 quando ela age — e antes do Time, que é quem fecha o dia.
+
+O `SistemaContratos` entra depois dela pela mesma razão de leitura (é o degrau
+seguinte da mesma escada), mas a posição só importa de verdade para as **ações**:
+`CumprirContratoAction` estende `RemoveItemAction`, então tem que vir depois do
+Inventory, que é quem tira o item. Para as **reações** a ordem é indiferente — a
+fila do `SimWorld` oferece cada evento a todos os sistemas, inclusive aos que já
+rodaram. É por isso que o `ContratoCumpridoEvent` chega ao `SistemaCidade`, que
+está atrás dele na fila, e volta de lá como `RelacaoSubiuEvent`.
 
 Quem detecta a impossibilidade marca `action.rejeitada = true` e emite
 `ActionRejectedEvent`; os sistemas seguintes começam com `if action.rejeitada:
