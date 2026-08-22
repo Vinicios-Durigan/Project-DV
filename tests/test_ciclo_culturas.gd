@@ -8,6 +8,7 @@ extends GutTest
 
 var _world: SimWorld
 var _crops: CropCatalog
+var _items: ItemCatalog
 var _inventory: InventorySystem
 var _farm: FarmSystem
 var _time: TimeSystem
@@ -15,7 +16,9 @@ var _time: TimeSystem
 func before_each() -> void:
 	_crops = CropCatalog.new()
 	_crops.load_from_dir()
-	_inventory = InventorySystem.new()
+	_items = ItemCatalog.new()
+	_items.load_from_dir()
+	_inventory = InventorySystem.new(InventoryState.new(), _items, _crops)
 	_farm = FarmSystem.new(FarmState.new(), _crops)
 	_time = TimeSystem.new()
 	# Ordem fixa do tick: Inventory → Farm → Time. É ela que cobra a semente
@@ -25,9 +28,13 @@ func before_each() -> void:
 	_world.register_system(_farm)
 	_world.register_system(_time)
 
+## Quanto a colheita da cultura vale — o preço mora no `ItemDef`, nunca na cultura.
+func _preco_venda(crop_id: String) -> int:
+	return _items.get_def(_crops.get_def(crop_id).item_colheita_id()).preco_venda
+
 func _lucro_por_dia(crop_id: String) -> float:
 	var def := _crops.get_def(crop_id)
-	return float(def.preco_venda * def.rende_por_colheita - def.preco_semente) / float(def.dias_ate_pronta())
+	return float(_preco_venda(crop_id) * def.rende_por_colheita - def.preco_semente) / float(def.dias_ate_pronta())
 
 func _dar(item_id: String, qtd: int) -> void:
 	var action := AddItemAction.new()
@@ -81,19 +88,19 @@ func test_as_quatro_culturas_estao_no_catalogo() -> void:
 func test_numeros_batem_com_a_tabela_do_gameplay() -> void:
 	assert_eq(_crops.get_def("rabanete").dias_ate_pronta(), 4)
 	assert_eq(_crops.get_def("rabanete").preco_semente, 20)
-	assert_eq(_crops.get_def("rabanete").preco_venda, 35)
+	assert_eq(_preco_venda("rabanete"), 35)
 
 	assert_eq(_crops.get_def("cenoura").dias_ate_pronta(), 6)
 	assert_eq(_crops.get_def("cenoura").preco_semente, 30)
-	assert_eq(_crops.get_def("cenoura").preco_venda, 65)
+	assert_eq(_preco_venda("cenoura"), 65)
 
 	assert_eq(_crops.get_def("abobora").dias_ate_pronta(), 13)
 	assert_eq(_crops.get_def("abobora").preco_semente, 80)
-	assert_eq(_crops.get_def("abobora").preco_venda, 180)
+	assert_eq(_preco_venda("abobora"), 180)
 
 	assert_eq(_crops.get_def("morango").dias_ate_pronta(), 8)
 	assert_eq(_crops.get_def("morango").preco_semente, 60)
-	assert_eq(_crops.get_def("morango").preco_venda, 45)
+	assert_eq(_preco_venda("morango"), 45)
 	assert_true(_crops.get_def("morango").colheitas_infinitas, "o morango rebrota")
 
 func test_todas_tem_quatro_estagios_e_sprite_por_estagio() -> void:
@@ -176,8 +183,8 @@ func test_morango_rebrota_a_cada_quatro_dias() -> void:
 
 func test_lucro_do_morango_cresce_quanto_antes_planta() -> void:
 	var def := _crops.get_def("morango")
-	var doze_dias := float(def.preco_venda * 2 - def.preco_semente) / 12.0
-	var vinte_dias := float(def.preco_venda * 4 - def.preco_semente) / 20.0
+	var doze_dias := float(_preco_venda("morango") * 2 - def.preco_semente) / 12.0
+	var vinte_dias := float(_preco_venda("morango") * 4 - def.preco_semente) / 20.0
 	assert_true(vinte_dias > doze_dias, "cada rebrota dilui o custo da semente")
 
 func test_fim_de_estacao_limpa_o_que_ficou_no_chao() -> void:

@@ -29,7 +29,6 @@ func test_crop_def_tem_defaults_seguros() -> void:
 	assert_eq(def.nome, "")
 	assert_eq(def.dias_por_estagio, [] as Array[int])
 	assert_eq(def.preco_semente, 0)
-	assert_eq(def.preco_venda, 0)
 	assert_eq(def.rende_por_colheita, 1)
 	assert_false(def.colheitas_infinitas, "cultura padrão morre na colheita")
 	assert_false(def.bloqueia_movimento, "default preserva o comportamento antigo")

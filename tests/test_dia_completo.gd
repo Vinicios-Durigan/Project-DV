@@ -11,8 +11,8 @@ extends GutTest
 ##   do calendário virar (GAMEPLAY §3).
 ##
 ## Preço de venda é do `ItemDef` — fonte única. O `CropDef` diz qual item a
-## colheita vira; quanto esse item vale é assunto do item. Aqui os `ItemDef`
-## nascem do catálogo de culturas, que é o que o `data/items/` vai gravar.
+## colheita vira; quanto esse item vale é assunto do item — e os `ItemDef` aqui
+## são os de verdade, carregados de `data/items/`.
 
 var _world: SimWorld
 var _crops: CropCatalog
@@ -26,10 +26,7 @@ func before_each() -> void:
 	_crops = CropCatalog.new()
 	_crops.load_from_dir()
 	_items = ItemCatalog.new()
-	for crop_id in _crops.ids():
-		var crop := _crops.get_def(crop_id)
-		_items.register(_item_def(crop.item_colheita_id(), crop.preco_venda))
-		_items.register(_item_def(crop.item_semente_id(), 0))
+	_items.load_from_dir()
 
 	_inventory = InventorySystem.new(InventoryState.new(), _items, _crops)
 	_shipping = ShippingSystem.new(ShippingState.new(), _items)
@@ -41,12 +38,6 @@ func before_each() -> void:
 	_world.register_system(_shipping)
 	_world.register_system(_farm)
 	_world.register_system(_time)
-
-func _item_def(id: String, preco_venda: int) -> ItemDef:
-	var def := ItemDef.new()
-	def.id = id
-	def.preco_venda = preco_venda
-	return def
 
 func _comprar(crop_id: String, qtd: int) -> Array[SimEvent]:
 	var action := BuySeedAction.new()

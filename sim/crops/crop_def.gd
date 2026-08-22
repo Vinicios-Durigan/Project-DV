@@ -35,8 +35,9 @@ const RENDE_PADRAO: int = 1
 @export_range(1, 99, 1) var rende_por_colheita: int = RENDE_PADRAO
 
 @export_group("Economia")
+## Quanto custa comprar uma semente. O preço de **venda** não mora aqui: o
+## caixote vende itens, e quem sabe quanto um item vale é o `ItemDef` dele.
 @export_range(0, 9999, 1) var preco_semente: int = 0
-@export_range(0, 9999, 1) var preco_venda: int = 0
 
 @export_group("Itens")
 ## Id do item de semente. Vazio cai na convenção `semente_<id>`.
