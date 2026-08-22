@@ -10,3 +10,7 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | 04 | Caixote — depósito, compra e venda ao dormir | concluída | 2026-08-18 |
 | 05 | Save/load — snapshot versionado | concluída | 2026-08-18 |
 | 06 | Dev tools — parte sim (gravação e log) | concluída | 2026-08-19 |
+| 07 | Ponte — a sim ganha tempo real e disco | concluída | 2026-08-20 |
+| 08 | Playground — Fazenda de Botões | concluída | 2026-08-20 |
+| 09 | Pedido do dia | adiada — pós-beta | 2026-08-20 |
+| 10 | Cidade — beneficiamento e cota | pendente | 2026-08-21 |

@@ -49,6 +49,10 @@ Antes de propor, responda para si mesmo:
 - Isso muda o formato do estado? Se sim, precisa de migração de save.
 - Isso exige arte nova? Liste o que o artista precisa entregar.
 - Dá para fazer sem tocar em `game/`? Se sim, melhor.
+- **Playground primeiro**: mecânica ou regra de negócio nova exige uma tarefa
+  de painel no playground (`game/dev/`) na mesma wave. Wave sem essa tarefa
+  está incompleta — a exceção é wave que não cria mecânica (refactor, arte,
+  infra).
 
 Traga isso na conversa, curto. Não é relatório.
 

@@ -121,7 +121,8 @@ Regra de balanceamento: lucro/dia da lenta ≈ 2× o da rápida.
 ## 10. Dados — dois planos, nunca misturar
 
 **Definições (estático, editor-friendly):** Resources `.tres` em `data/`.
-- `CropDef`: id, nome, dias_por_estagio, preco_semente, preco_venda, colheitas_infinitas, bloqueia_movimento, sprites.
+- `CropDef`: id, nome, dias_por_estagio, preco_semente, colheitas_infinitas, bloqueia_movimento, sprites. O preço de **venda** não mora aqui: quem sabe quanto um item vale é o `ItemDef` dele — o caixote vende itens, não culturas.
+- `ItemDef`: id, nome, preco_venda, stack_max. Fonte única de preço de venda.
 - `ToolDef`: id, nome, ação que despacha, ícone.
 - Designer ajusta balanceamento sem tocar código. Sem SQLite — overkill absoluto para single-player farming.
 

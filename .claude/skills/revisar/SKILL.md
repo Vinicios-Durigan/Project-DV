@@ -33,6 +33,11 @@ Revise apenas o que mudou. Não audite o repositório inteiro.
 - Toda função nova tem tipo nos parâmetros e no retorno?
 - Nomes de arquivo e função em snake_case, classes em PascalCase?
 - Comentários em português brasileiro?
+- **Todo nome novo em português?** Classe, arquivo, função, variável, sinal,
+  constante, chave de dicionário e chave de save. Nome novo em inglês é falha,
+  exceto o que a engine obriga (`_ready`, `_process`, `to_dict`, `Resource`,
+  `Node`, `Vector2i`). Não cobre nome que já existia — nunca sugira rename
+  retroativo.
 
 **Teste**
 - Todo código novo em `sim/` tem teste correspondente?
@@ -47,6 +52,9 @@ Revise apenas o que mudou. Não audite o repositório inteiro.
 **Documentação viva**
 - Evento novo ou alterado foi refletido em `sim/EVENTOS.md`?
 - A wave foi marcada em `tasks/INDEX.md`?
+- O manual visual foi atualizado e republicado no mesmo endereço? Mudança de
+  arquitetura, decisão travada ou necessidade de arte que não chegou lá é
+  pendência aberta.
 
 ## Passo 3 — Relatório
 

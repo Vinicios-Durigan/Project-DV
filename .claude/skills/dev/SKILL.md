@@ -58,6 +58,12 @@ Não toque em nenhum arquivo que não esteja declarado em `Cria:` na tarefa.
 
 - Atualize `sim/EVENTOS.md` se a wave criou ou mudou eventos.
 - Atualize `tasks/INDEX.md` marcando a wave como concluída.
+- **Atualize o manual visual** e republique no mesmo endereço (ver CLAUDE.md,
+  "Documentação é visual"). Wave que mudou arquitetura, decisão travada, ordem
+  do laço, estado das waves ou necessidade de arte tem que aparecer lá. Wave não
+  fecha sem isso.
+- Se a wave criou mecânica nova sem tarefa de playground (`game/dev/`), avise:
+  a regra do CLAUDE.md exige o painel na mesma wave — anote a pendência.
 - Diga em 3 linhas o que foi feito e o que ficou pendente.
 - **Pare.** Não comece a próxima wave.
 

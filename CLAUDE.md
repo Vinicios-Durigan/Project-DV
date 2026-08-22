@@ -25,6 +25,64 @@ arquitetura, mesmo que funcione.
 Não existe caminho de volta: `sim/` nunca importa, referencia ou conhece nada
 de `game/`.
 
+## Como uma mecânica nasce
+
+`docs/PRINCIPIOS.md` é lei de design e **vale para toda mecânica futura** —
+pecuária, pescaria, artesanato, festivais. Leia antes de propor ou planejar
+qualquer sistema novo.
+
+O resumo, para não errar de cara:
+
+- A tese: o jogador começa **dependente da cidade**; autossuficiência é prêmio
+  de fim de jogo, comprada com dependência.
+- **Transformação mora na cidade, nunca na fazenda.** Sem forja, bancada ou
+  oficina em casa — entrega, paga, espera, busca.
+- Todo estabelecimento tem a mesma escada: **caixote → contrato → dono**. O
+  caixote nunca morre.
+- **Cota** (sua, sobe com amizade) e **capacidade** (do prédio, só muda
+  comprando) são números diferentes. Cota batendo na capacidade é o que
+  destrava a compra.
+- **Melhorar custa a produção de outro estabelecimento**, nunca só dinheiro.
+- **Relação sobe por constância**, não por volume nem dinheiro. Não zera.
+- **Mecânica sem decisão que pode dar errado é morna.** O atrito padrão é
+  limite.
+- **Nada de grind de coleta.** A mina foi cortada e não volta.
+- **Toda mecânica compete pelo relógio.** Não custa tempo, não é decisão.
+
+Mecânica proposta que viola um desses ou muda, ou muda o princípio — mas não
+passa calada.
+
+## Playground primeiro
+
+Toda mecânica ou regra de negócio nova (pescaria, craft, skills, troca de cena,
+respawn, o que for) nasce em `sim/` e ganha seus botões no playground
+(`game/dev/`) **na mesma wave**. O objetivo é o jogo completo jogável por
+botões; o jogo visual (sprites, animações, mapa) só implementa o que já foi
+jogado e aprovado no playground. Mecânica sem painel no playground é wave
+incompleta.
+
+## Documentação é visual
+
+O time tem duas pessoas e uma delas não lê código. Documentação só em `.md` não
+é entrega completa.
+
+Existe **uma página viva** — o Manual do Project-DV, publicado como artefato em
+`https://claude.ai/code/artifact/f66c7542-73f4-4c14-ba37-e0d4bde73302` — e ela é
+a porta de entrada do projeto: o que o jogo é, como a arquitetura funciona, o
+que já está pronto, o que falta para o beta, como rodar e o que dá para mexer
+sem programar.
+
+Regras:
+
+- **Toda wave fechada atualiza o manual** antes de a wave ser dada por
+  encerrada. Wave que muda arquitetura, decisão travada, ordem do laço ou
+  necessidade de arte tem que aparecer lá.
+- **Uma página só.** Republicar sempre no mesmo endereço, nunca criar uma
+  segunda — o link é distribuído e tem que continuar valendo.
+- Os `.md` em `docs/` continuam sendo a fonte de verdade escrita
+  (`GAMEPLAY.md` para design, `ARTE.md` para a especificação de arte). O manual
+  é a leitura, não a fonte — se divergirem, o `.md` manda e o manual é corrigido.
+
 ## Layout de diretórios
 
 ```
@@ -50,13 +108,30 @@ addons/gut/   framework de testes GUT 9.7.1 (não editar à mão)
 - **Tipagem estática obrigatória** em todo GDScript. Todo parâmetro e todo
   retorno anotado, inclusive `-> void`. Toda variável de membro com tipo
   explícito. Nada de `var x = ...` sem tipo em código novo.
-- **Arquivos e funções**: `snake_case` (`crop_growth.gd`, `advance_day()`).
-- **Classes**: `PascalCase` (`class_name CropState`).
+- **Arquivos e funções**: `snake_case` (`crescimento_cultura.gd`, `avanca_dia()`).
+- **Classes**: `PascalCase` (`class_name EstadoCultura`).
 - **Constantes**: `SCREAMING_SNAKE_CASE`.
 - **Comentários e mensagens de commit**: português brasileiro.
-- **Nomes de API** (classes, funções, variáveis, sinais): inglês.
-- Sinais no passado: `day_advanced`, `crop_harvested`.
 - Um `class_name` por arquivo, com o nome do arquivo correspondendo.
+
+### Tudo em português
+
+**Todo nome que nós escolhemos é em português**: classes, arquivos, funções,
+variáveis, sinais, constantes, chaves de dicionário e chaves do save. Sem
+mistura. `colher()`, não `harvest()`. `EstadoFazenda`, não `FarmState`.
+
+Fica em inglês só o que a engine obriga e nós não escolhemos: `_ready`,
+`_process`, `extends`, `class_name`, `Resource`, `Node`, `Vector2i`,
+`to_dict`/`from_dict` e afins. A regra prática: se o nome foi decisão nossa, é
+português.
+
+Sinais no passado: `dia_virou`, `cultura_colhida`.
+
+**Não renomeamos o que já existe.** O código das waves 01–08 nasceu com nomes em
+inglês (`SimWorld`, `CropDef`, `FarmSystem`, `advance`, `snapshot`) e continua
+assim — rename retroativo é risco sem retorno. A regra vale para código novo.
+Ao mexer num arquivo antigo, nome novo entra em português; o que já está lá não
+se traduz de carona.
 
 ## Comandos
 
