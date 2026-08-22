@@ -50,6 +50,17 @@ const LADO_HOTBAR: float = 52.0
 ## Distância da hotbar até a base da tela.
 const ALTURA_DA_HOTBAR: float = 12.0
 
+## Espaço reservado ao ícone dentro do slot, já descontada a folga das bordas —
+## sprite colado na borda parece apertado e some no contorno do quadrado.
+##
+## É **espaço disponível**, não o tamanho final: `_moldura_do_icone` encolhe até
+## o maior múltiplo inteiro do sprite que caiba aqui. 52 vira 48 (3× de 16px) e
+## 36 vira 32 (2×). Ver o cabeçalho da função — escala quebrada é o que faz
+## pixel art boa parecer amadora.
+const ESPACO_DO_ICONE: float = 52.0
+## Na hotbar a folga é menor de cima: lá o número da tecla divide o espaço.
+const ESPACO_DO_ICONE_HOTBAR: float = 36.0
+
 ## As duas abas do modal. `mochila` é a de sempre; `cidade` é o balcão do
 ## moinho e da padaria, que na wave 12 morava numa coluna de debug no rail.
 ##
@@ -58,12 +69,14 @@ const ALTURA_DA_HOTBAR: float = 12.0
 ## mochila** — os dois números que brigam entre si o jogo inteiro.
 const ABA_MOCHILA: String = "mochila"
 const ABA_CIDADE: String = "cidade"
-const ABAS: Array[String] = [ABA_MOCHILA, ABA_CIDADE]
+const ABA_CONTRATOS: String = "contratos"
+const ABAS: Array[String] = [ABA_MOCHILA, ABA_CIDADE, ABA_CONTRATOS]
 
 ## O nome de cada aba na tela. Os ids são de máquina; o texto é daqui.
 const NOMES_ABAS: Dictionary = {
 	ABA_MOCHILA: "Mochila",
 	ABA_CIDADE: "Cidade",
+	ABA_CONTRATOS: "Contratos",
 }
 
 var _bridge: SimBridge
@@ -82,6 +95,7 @@ var _aba: String = ABA_MOCHILA
 var _botoes_aba: Dictionary = {}
 var _conteudo_mochila: Control
 var _cidade: PainelCidade
+var _contratos: PainelContratos
 
 
 func _ready() -> void:
@@ -99,6 +113,7 @@ func setup(bridge: SimBridge) -> void:
 	# A casca para de repassar o fio em quem tem `setup`: o balcão da cidade é
 	# filho deste painel agora, então é este nó que o entrega.
 	_cidade.setup(bridge)
+	_contratos.setup(bridge)
 	_atualiza()
 
 
@@ -159,6 +174,20 @@ func cidade_visivel() -> bool:
 func painel_cidade() -> PainelCidade:
 	return _cidade
 
+func contratos_visivel() -> bool:
+	return _contratos.visible
+
+## A mesa dos contratos, para quem precisa dela — os testes e a casca.
+func painel_contratos() -> PainelContratos:
+	return _contratos
+
+## Abre o modal já na aba de contratos, com o dono destacado. É o que a porta do
+## mundo chama quando o prédio tem encomenda esperando resposta.
+func abre_contratos(id: String) -> void:
+	_contratos.destaca(id)
+	mostra_aba(ABA_CONTRATOS)
+	abre()
+
 ## Abre o modal já na aba da cidade, com o estabelecimento destacado.
 ##
 ## É o que a porta do mundo chama: quem entrou no moinho não quer procurar o
@@ -171,6 +200,7 @@ func abre_cidade(id: String) -> void:
 func _mostra_aba_na_tela() -> void:
 	_conteudo_mochila.visible = _aba == ABA_MOCHILA
 	_cidade.visible = _aba == ABA_CIDADE
+	_contratos.visible = _aba == ABA_CONTRATOS
 	_titulo.text = String(NOMES_ABAS.get(_aba, _aba)).to_upper()
 	for nome: String in _botoes_aba:
 		(_botoes_aba[nome] as Button).button_pressed = nome == _aba
@@ -345,6 +375,14 @@ func _monta_modal() -> void:
 	_cidade.name = "PainelCidade"
 	coluna.add_child(_cidade)
 
+	# Aba irmã da cidade, e não uma seção dentro dela: beneficiar é serviço que
+	# o jogador contrata, contrato é pedido feito **a** ele. Misturar os dois
+	# numa tela só faria a fila do moinho e o prazo do dono disputarem o mesmo
+	# olhar — e é o prazo que tem hora para acabar.
+	_contratos = PainelContratos.new()
+	_contratos.name = "PainelContratos"
+	coluna.add_child(_contratos)
+
 	coluna.add_child(_rodape())
 	_mostra_aba_na_tela()
 
@@ -490,18 +528,99 @@ func _quadrado_da_hotbar(indice: int, item_id: String, qtd: int, na_mao: bool) -
 	if item_id.is_empty():
 		botao.text = "%d\n—" % tecla if na_mao else "%d" % tecla
 		botao.tooltip_text = "slot %d — vazio (mão vazia colhe)" % tecla
+		botao.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		botao.pressed.connect(equipa.bind(indice))
+		return botao
+
+	var nome := _nome_do_item(item_id)
+	botao.tooltip_text = "%s — tecla %d" % [nome, tecla]
+
+	# O número da tecla nunca sai da hotbar, com ícone ou sem: é ele que liga o
+	# quadrado ao dedo, e é a informação que se olha no meio de uma corrida.
+	var icone := _icone_do_item(item_id)
+	if icone != null:
+		botao.text = str(tecla)
+		botao.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		botao.add_child(_moldura_do_icone(icone, ESPACO_DO_ICONE_HOTBAR))
+		if qtd > 1:
+			botao.add_child(_etiqueta_de_quantidade("×%d" % qtd))
 	else:
-		var nome := _nome_do_item(item_id)
 		botao.text = "%d\n%s" % [tecla, nome] if qtd <= 1 else "%d\n%s ×%d" % [tecla, nome, qtd]
-		botao.tooltip_text = "%s — tecla %d" % [nome, tecla]
 	botao.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	botao.pressed.connect(equipa.bind(indice))
 	return botao
 
-## Um slot: quadrado com a inicial grande, o nome embaixo e a quantidade no
-## canto. Sem ícone porque não existe arte — e se já der para jogar assim, com
-## ícone fica melhor, nunca pior.
+
+## O ícone que o `.tres` do item aponta, ou `null` enquanto a arte não chegou.
+func _icone_do_item(item_id: String) -> Texture2D:
+	if _bridge == null:
+		return null
+	return Icones.do_item(_bridge.get_item_catalog(), item_id)
+
+
+## O ícone dentro do quadrado: centralizado, **nearest** e em escala **inteira**.
+##
+## ## Por que a escala inteira é obrigatória
+##
+## `nearest` não borra, mas também não inventa pixel: num aumento de 3,25× ele
+## desenha algumas colunas do sprite com 3px e outras com 4px. O contorno fica
+## mordido, a linha de 1px vira ora fina ora grossa, e a arte parece mal
+## desenhada mesmo estando perfeita no arquivo. É o mesmo motivo pelo qual o
+## `project.godot` proíbe zoom não-inteiro na câmera (GAMEPLAY §2) — a regra
+## vale para o ícone no slot exatamente igual.
+##
+## Por isso `espaco` é o que **cabe**, e não o tamanho final: a moldura encolhe
+## até o maior múltiplo inteiro do sprite. Um ícone de 16px em 52 de espaço fica
+## com 48 (3×) e ganha 2px de folga a mais de cada lado — ninguém percebe a
+## folga, todo mundo percebe o pixel torto.
+##
+## A conta sai do tamanho real da textura, e não de uma constante: sprite de
+## 16×32 (o personagem, um dia) continua caindo em escala inteira sozinho.
+##
+## O nó ignora o mouse: o clique é do botão, não da imagem.
+func _moldura_do_icone(icone: Texture2D, espaco: float) -> TextureRect:
+	var imagem := TextureRect.new()
+	imagem.texture = icone
+	var lado := maxf(icone.get_width(), icone.get_height())
+	var escala := maxf(floorf(espaco / lado), 1.0)
+	var tamanho := Vector2(icone.get_size()) * escala
+	imagem.custom_minimum_size = tamanho
+	imagem.size = tamanho
+	# Centralizado pelo próprio tamanho, e não pelas bordas do botão: assim o
+	# ícone continua em escala inteira mesmo se a grade esticar o slot.
+	imagem.set_anchors_and_offsets_preset(Control.PRESET_CENTER,
+		Control.PRESET_MODE_KEEP_SIZE)
+	imagem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	imagem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	imagem.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	imagem.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return imagem
+
+
+## A quantidade no canto de baixo, por cima do ícone. Fora do texto do botão
+## porque o texto do botão fica no meio — e no meio ele cobriria o desenho.
+func _etiqueta_de_quantidade(texto: String) -> Label:
+	var rotulo := Label.new()
+	rotulo.text = texto
+	rotulo.theme_type_variation = &"Micro"
+	rotulo.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	rotulo.offset_left = -46.0
+	rotulo.offset_top = -20.0
+	rotulo.offset_right = -4.0
+	rotulo.offset_bottom = -2.0
+	rotulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	rotulo.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	rotulo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return rotulo
+
+## Um slot: o ícone quando existe, o nome escrito quando ainda não existe, e a
+## quantidade no canto.
+##
+## O texto não some por causa do ícone — ele **dá lugar** a ele. Enquanto a arte
+## de um item não chegou, aquele slot continua legível, e o playground continua
+## jogável com meia dúzia de sprites prontos. Uma tela que só funciona depois de
+## toda a arte pronta seria o contrário do que o playground existe para fazer.
 func _quadrado(item_id: String, qtd: int, da_mochila: bool, indice: int = -1) -> Control:
 	var botao := _arrastavel(indice if da_mochila else -1, item_id)
 	botao.custom_minimum_size = Vector2(LADO_SLOT, LADO_SLOT)
@@ -518,10 +637,16 @@ func _quadrado(item_id: String, qtd: int, da_mochila: bool, indice: int = -1) ->
 		return botao
 
 	var nome := _nome_do_item(item_id)
-	botao.text = "%s\n×%d" % [nome, qtd]
 	botao.tooltip_text = "%s — %d\n%s" % [nome, qtd,
 		"clique manda para o caixote" if da_mochila else "clique traz para a mochila"]
-	botao.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+	var icone := _icone_do_item(item_id)
+	if icone != null:
+		botao.add_child(_moldura_do_icone(icone, ESPACO_DO_ICONE))
+		botao.add_child(_etiqueta_de_quantidade("×%d" % qtd))
+	else:
+		botao.text = "%s\n×%d" % [nome, qtd]
+		botao.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	if da_mochila:
 		botao.pressed.connect(transfere_da_mochila.bind(item_id, qtd))

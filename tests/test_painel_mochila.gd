@@ -249,3 +249,108 @@ func test_o_status_panel_nao_lista_mais_a_mochila() -> void:
 		"Raiz/Corpo/Rail/RolagemRail/ColunaRail/StatusPanel") as StatusPanel
 	assert_null(painel.get("_lista_mochila"),
 		"a lista velha continua no rail — agora quem mostra é o Tab")
+
+
+# --- os ícones ------------------------------------------------------------
+
+const ICONE_DE_TESTE: String = "res://tests/dados/icone_de_teste.png"
+
+## Procura a imagem dentro de um slot. O ícone é um filho do botão, e não o
+## `icon` dele, porque o texto do botão fica no meio do quadrado — e no meio ele
+## cobriria o desenho.
+func _imagem_no_slot(slot: Control) -> TextureRect:
+	for filho in slot.get_children():
+		var imagem := filho as TextureRect
+		if imagem != null:
+			return imagem
+	return null
+
+## O jogador já começa com enxada e regador nos primeiros slots — procurar pelo
+## item é o que mantém o teste válido quando a entrega inicial mudar.
+func _quadrado_de(item_id: String) -> Button:
+	return _painel._mochila.get_child(_slot_de(item_id)) as Button
+
+func _com_icone(item_id: String) -> void:
+	_bridge.get_item_catalog().get_def(item_id).sprite = ICONE_DE_TESTE
+	Icones.esquece_tudo()
+
+## O slot mostra o desenho quando o `.tres` do item aponta um.
+func test_slot_com_arte_mostra_o_icone() -> void:
+	_com_icone("trigo")
+	_da_item("trigo", 3)
+	_painel.abre()
+
+	var imagem := _imagem_no_slot(_quadrado_de("trigo"))
+	assert_not_null(imagem, "o slot desenha o sprite do item")
+	assert_not_null(imagem.texture)
+
+## E continua legível enquanto a arte não chegou — que é o estado da maioria dos
+## itens hoje. O playground não pode depender de arte para ser jogável.
+func test_slot_sem_arte_continua_mostrando_o_nome() -> void:
+	Icones.esquece_tudo()
+	_da_item("cenoura", 2)
+	_painel.abre()
+
+	var slot: Button = _quadrado_de("cenoura")
+	assert_null(_imagem_no_slot(slot), "sem sprite no .tres, sem imagem")
+	assert_string_contains(slot.text, "Cenoura", "o nome escrito não sai de cena")
+	assert_string_contains(slot.text, "2")
+
+## Pixel art de 16px num slot de 72px é ampliada 4×. Qualquer filtro que não
+## seja nearest borra o desenho — e borrado ele deixa de ser pixel art.
+func test_o_icone_nao_borra_ao_ser_ampliado() -> void:
+	_com_icone("trigo")
+	_da_item("trigo", 1)
+	_painel.abre()
+
+	var imagem := _imagem_no_slot(_quadrado_de("trigo"))
+	assert_eq(imagem.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST)
+	assert_eq(imagem.stretch_mode, TextureRect.STRETCH_KEEP_ASPECT_CENTERED,
+		"o sprite não estica — um regador alto continua alto")
+
+## E é ampliada em escala **inteira**. `nearest` não borra, mas num aumento de
+## 3,25× ele desenha umas colunas do sprite com 3px e outras com 4px: o contorno
+## fica mordido e a arte parece mal desenhada estando perfeita no arquivo. É a
+## mesma proibição do zoom não-inteiro da câmera (GAMEPLAY §2), aplicada ao slot.
+func test_o_icone_e_ampliado_em_escala_inteira() -> void:
+	_com_icone("trigo")
+	_da_item("trigo", 1)
+	_painel.abre()
+
+	var imagem := _imagem_no_slot(_quadrado_de("trigo"))
+	var sprite := imagem.texture.get_size()
+	var escala := imagem.custom_minimum_size.x / sprite.x
+	assert_eq(escala, floorf(escala), "escala quebrada é o que deixa o pixel torto")
+	assert_gt(escala, 1.0, "e o ícone ainda precisa encher o slot")
+	assert_eq(imagem.custom_minimum_size.y / sprite.y, escala,
+		"a mesma escala nos dois eixos — senão o sprite deforma")
+
+## Na hotbar vale igual, com o quadrado menor.
+func test_o_icone_da_hotbar_tambem_e_escala_inteira() -> void:
+	_com_icone("trigo")
+	_da_item("trigo", 1)
+
+	var imagem := _imagem_no_slot(_painel._hotbar.get_child(_slot_de("trigo")) as Control)
+	var escala := imagem.custom_minimum_size.x / imagem.texture.get_size().x
+	assert_eq(escala, floorf(escala), "o slot menor não é desculpa para pixel torto")
+
+## O clique é do botão, não da imagem: um `TextureRect` que come o mouse faria
+## o slot parar de responder justamente quando ele tem item.
+func test_o_icone_nao_rouba_o_clique_do_slot() -> void:
+	_com_icone("trigo")
+	_da_item("trigo", 5)
+	_painel.abre()
+
+	assert_eq(_imagem_no_slot(_quadrado_de("trigo")).mouse_filter,
+		Control.MOUSE_FILTER_IGNORE)
+
+## Na hotbar o número da tecla nunca sai — é ele que liga o quadrado ao dedo, e
+## é o que se olha no meio de uma corrida.
+func test_a_hotbar_mostra_o_icone_sem_perder_o_numero_da_tecla() -> void:
+	_com_icone("trigo")
+	_da_item("trigo", 4)
+
+	var indice := _slot_de("trigo")
+	var slot: Button = _painel._hotbar.get_child(indice) as Button
+	assert_not_null(_imagem_no_slot(slot), "o sprite entrou")
+	assert_eq(slot.text, str(indice + 1), "e a tecla continua escrita")

@@ -29,6 +29,32 @@ destrói a arte. Desenhe no tamanho final.
 **Proibido:** anti-aliasing e sombra com transparência parcial nas bordas. O
 filtro nearest transforma pixel semitransparente em borda suja.
 
+### A escala na tela é sempre inteira — inclusive na UI
+
+A regra da tabela acima ("somente inteira") vale para a câmera **e para todo
+lugar onde um sprite aparece**, incluindo o quadrado do inventário e o da
+hotbar.
+
+O motivo é fácil de confundir com "borrado". Nearest não borra: ele repete
+pixel. O problema é que num aumento de 3,25× ele repete **desigual** — algumas
+colunas do sprite saem com 3 pixels de largura e outras com 4. Resultado: o
+contorno fica mordido, a linha de 1px fica ora fina ora grossa, e a arte parece
+malfeita estando perfeita no arquivo.
+
+Foi exatamente o que aconteceu em 2026-08-22: o slot da mochila dava 52px de
+espaço a um ícone de 16px (3,25×) e o da hotbar dava 36px (2,25×). A arte estava
+correta — 16×16, 16 cores, zero pixel semitransparente. Quem deformava era a
+tela.
+
+Hoje `game/dev/painel_mochila.gd` arredonda a escala para baixo sozinho (52
+vira 48 = 3×, 36 vira 32 = 2×) e dois testes prendem a regra. **Quem for
+desenhar tela nova precisa fazer o mesmo:** reserve espaço para o ícone e
+arredonde para o múltiplo inteiro, em vez de esticar o sprite até preencher.
+
+Consequência prática para quem desenha: um ícone só é julgado com honestidade
+ampliado em ×2, ×3 ou ×4. Se você comparar o seu sprite com o de outro jogo numa
+escala quebrada, está comparando com um handicap que não existe no jogo.
+
 ---
 
 ## 2. Culturas — 24 sprites
@@ -216,6 +242,17 @@ mas nesta ordem o jogo fica jogável mais cedo.
 3. Rode `godot --headless --import`
 4. Abra o jogo — a arte aparece sozinha
 
+### Ligar o PNG à cultura ou ao item, no editor
+
+Abra o `.tres` em `data/crops/` ou `data/items/` e olhe o grupo **Sprites**.
+Cada campo de caminho é um seletor de arquivo: **arraste o PNG direto do painel
+FileSystem** para dentro dele, ou clique na pasta e escolha. Não digite o
+caminho à mão — uma letra errada não dá erro nenhum, o sprite simplesmente não
+aparece quando o jogo roda.
+
+Nos estágios da cultura são quatro caixas num array, uma por estágio, na ordem
+`estagio_0` até `estagio_3`.
+
 Se um sprite não aparecer, o nome ou a pasta estão errados. Confira caractere
 por caractere: minúsculo, sem acento, sublinhado e não hífen.
 
@@ -235,36 +272,94 @@ tools\fatiar.bat
 Abre uma janela. Não precisa instalar nada e não precisa saber programar — é a
 Godot que faz o trabalho.
 
-### O que a janela faz
+### As três colunas
 
-Da esquerda para a direita, na ordem dos números:
+**Esquerda — como cortar.** Abrir a imagem, remover o fundo, achar os desenhos,
+acabamento. Mexer aqui muda quais sprites existem. O resumo e o botão de gravar
+ficam fixos embaixo, sempre visíveis.
 
-1. **A folha** — abre a imagem.
-2. **Para onde vai** — escolha o tipo (Item, Cultura, Objeto, Chão, UI,
-   Personagem, Partícula) e a pasta certa é preenchida sozinha. Em Cultura,
-   digite o nome — "Abóbora" vira `assets/crops/abobora/`, sem acento.
-3. **Fundo** — a cor de fundo é detectada sozinha e removida. Se sobrar
-   moldura em volta do desenho, aumente a tolerância.
-4. **Corte** — cada desenho é achado sozinho e marcado em verde, com um número.
-5. **Acabamento** — tamanho da célula, onde o desenho encosta, escala.
-6. **Nomes** — um por linha, na ordem dos números verdes. Em Cultura, o botão
-   "Preencher pela convenção" escreve estágios, semente e fruto de uma vez.
-7. **Gravar**.
+**Meio — a folha.** Cada desenho achado sai marcado em verde, com um número.
 
-A faixa embaixo da imagem mostra **cada sprite exatamente como vai para o
-disco**, ampliado. É ali que se confere se ficou 16×16 e se ainda dá para
-reconhecer o desenho nesse tamanho.
+- **roda do mouse** dá zoom
+- **arrastar** move a folha
+- **clique** escolhe um sprite (fica laranja, e a linha dele acende na lista)
+- **Ajustar** reenquadra a folha inteira
+
+**Direita — a lista.** Uma linha por sprite: miniatura do resultado, o nome do
+arquivo e **o tipo daquele sprite**.
+
+### Uma folha, várias pastas
+
+Este é o ponto. A folha de verdade tem os quatro estágios da cenoura, os do
+rabanete, o pão, o regador e a enxada — tudo junto. Cada um mora numa pasta
+diferente, e você **não** precisa recortar a mesma imagem cinco vezes.
+
+O tipo é escolhido **sprite por sprite**, na lista da direita:
+
+| Tipo | Vai para |
+| --- | --- |
+| Item | `assets/items/` |
+| Cultura | `assets/crops/<nome>/` |
+| Objeto do mundo | `assets/objects/` |
+| Chão | `assets/tiles/` |
+| UI | `assets/ui/` |
+| Personagem | `assets/player/` |
+| Partícula | `assets/fx/` |
+
+O seletor da coluna esquerda é só o **padrão**, aplicado a todos quando a folha
+abre. "Aplicar a todos da lista" reaplica quando você quiser recomeçar.
+
+Em Cultura, a subpasta sai do **próprio nome**: chame o sprite de
+`cenoura_estagio_0` e ele vai para `assets/crops/cenoura/`. Não há um segundo
+campo para preencher.
+
+### Nomear vários de uma vez
+
+Nomear 25 sprites um a um dói, e digitar o mesmo nome em todos — o atalho
+natural — produz 25 arquivos que se sobrescrevem. Por isso a ferramenta recusa
+nomes repetidos na mesma pasta.
+
+O jeito certo é o lote, que funciona igual ao "Juntar marcados":
+
+1. Marque os quadradinhos dos sprites daquela cultura (ou **Marcar todos**)
+2. Digite o **nome base** — `abobora`
+3. Escolha a **ordem** que a folha usa
+4. **Nomear marcados**
+
+Saem `abobora_semente`, `abobora_estagio_0` até `_3` e `abobora_fruto`, na ordem
+de leitura. O que não está marcado não é tocado — o pão e o regador da mesma
+folha ficam com o nome que você deu.
+
+A ordem importa e a ferramenta **não adivinha**, porque as folhas vêm das duas
+maneiras. Olhe os números na imagem antes de escolher:
+
+| Ordem | Quando usar |
+| --- | --- |
+| Cultura — semente, estágios, fruto | O pacote de semente é o primeiro desenho da folha |
+| Cultura — estágios, semente, fruto | Os estágios vêm primeiro e os dois ícones no fim |
+| Numerado — nome_0, nome_1, … | Não é cultura: quadros de partícula, peças de cerca |
+
+
+O resumo embaixo mostra o total por pasta antes de gravar:
+
+```
+4 sprites
+2 → res://assets/crops/cenoura
+1 → res://assets/items
+1 → res://assets/objects
+todos saem 16×16
+```
 
 Depois de gravar, rode `godot --headless --import`, como na seção 10.
 
 ### Se a imagem veio grande, ou foi gerada por IA
 
-Este é o caso mais comum hoje: a imagem tem 512 ou 1024 px, bordas suaves e
-centenas de tons. Reduzir isso para 16×16 e pronto não dá pixel art — dá uma
-mancha borrada com franja cinza em volta.
+A imagem tem 512 ou 1024 px, bordas suaves e centenas de tons. Reduzir isso para
+16×16 e pronto não dá pixel art — dá uma mancha borrada com franja cinza em
+volta.
 
-Na janela, ligue **"Tratar como arte gerada"** (seção 5.1). Ele faz quatro
-coisas de uma vez, que só funcionam juntas:
+Ligue **"Tratar como arte gerada"** (seção 6). Ele faz quatro coisas de uma vez,
+que só funcionam juntas:
 
 | Etapa | Por quê |
 | --- | --- |
@@ -286,12 +381,50 @@ Cada uma continua disponível solta, logo abaixo do interruptor, para afinar.
 | Não achou nada | Escolha "Esta cor" e clique na cor do seu fundo |
 | Sobrou fundo **dentro** do desenho | Ligue "Apagar a cor na imagem toda" |
 
+Mexer nesses ajustes **não apaga** os nomes e tipos já escolhidos.
+
 Dois desenhos encostados na folha são um sprite só para a ferramenta — nesse
 caso separe os dois na imagem de origem por uns 3 px de fundo e abra de novo.
 
+### Quando dois recortes são o mesmo item
+
+Acontece: um grão partido em dois pedaços, uma ferramenta cujo cabo se afasta da
+lâmina. A ferramenta separa por vizinhança e não tem como adivinhar — e subir
+"Juntar pedaços a até" até colar aqueles dois cola também os vizinhos.
+
+Nesse caso a decisão é sua, na lista da direita:
+
+1. Marque o quadradinho dos dois (ou mais)
+2. **Juntar marcados**
+
+Eles viram um sprite só, na área que cobre todos. O vão entre os pedaços é
+transparente e some no recorte. O sprite novo fica com o nome e o tipo do
+primeiro — o de cima e à esquerda.
+
+**Remover** descarta os marcados, para sujeira que virou recorte. **Refazer a
+lista do zero** desfaz junções e remoções sem precisar reabrir o arquivo.
+
+> Junções, nomes e tipos se perdem se você mexer nos ajustes de corte (seção 4).
+> Acerte o corte primeiro, depois trabalhe a lista.
+
+Ao lado de cada nome aparece o tamanho final — `16×16` em cinza quando está no
+padrão, em laranja quando passou dele.
+
+### O que trava a gravação
+
+O botão fica desligado, com o motivo no resumo, quando:
+
+- algum sprite está **sem nome**
+- dois sprites têm **o mesmo nome na mesma pasta** — viraria um arquivo só, em
+  silêncio (o mesmo nome em pastas diferentes é permitido)
+- um sprite marcado como Cultura **não tem nome de cultura** — iria para
+  `assets/crops/` solto, fora da subpasta que o jogo procura
+
+Arquivo que já existe não é substituído sem perguntar.
+
 ### Pelo terminal, se preferir
 
-Tudo o que a janela faz também roda por linha de comando, com os mesmos nomes:
+Tudo o que a janela faz também roda por linha de comando:
 
 ```
 tools\fatiar.bat --entrada=C:\caminho\itens.png --tipo=item --listar
@@ -299,11 +432,11 @@ tools\fatiar.bat --entrada=C:\caminho\trigo.png --tipo=cultura --slug=trigo
 tools\fatiar.bat --entrada=C:\caminho\gerado.png --tipo=item --de-ia
 ```
 
-`--listar` mostra o que achou sem gravar nada; `--contato=arquivo.png` grava uma
-folha de conferência com todos os recortes numerados. `tools\fatiar.bat --ajuda`
-lista o resto.
+`--listar` mostra o que achou sem gravar; `--contato=arquivo.png` grava uma
+folha de conferência numerada. `tools\fatiar.bat --ajuda` lista o resto.
 
-A ferramenta não sobrescreve arquivo que já existe sem perguntar.
+Pelo terminal o tipo vale para a folha inteira — folha misturada é caso para a
+janela.
 
 ---
 
@@ -377,6 +510,46 @@ com os mesmos 6 arquivos da seção 2.
 
 Quantos e quais combinam ainda não foi decidido. Contar com **2 a 4 híbridos**
 no orçamento de arte de longo prazo.
+
+---
+
+### Cobertura do terreno — 5 tiles (wave 14, decidido em 2026-08-22)
+
+A fazenda vai parar de nascer inteirinha limpa. Cada tile passa a ter uma
+**cobertura**, e o jogador abre o terreno ao longo dos dias — pedra com
+picareta, árvore com machado (vira toco), toco com o segundo golpe, mato com a
+enxada.
+
+Pasta: `assets/tiles/`
+
+| Sprite | Quantidade | Nota |
+|---|---|---|
+| Mato | 2 | Duas variações — é a cobertura que mais aparece, e ela se espalha |
+| Pedra | 1 | Já previsto na seção 3. Bloqueia passagem |
+| Árvore | 1 | Ocupa 1 tile. Bloqueia passagem |
+| Toco | 1 | O que sobra da árvore cortada. Bloqueia passagem |
+
+**Regra de leitura, e ela é de jogo, não de estilo:** mato tem que parecer
+*removível em um golpe* e pedra/árvore têm que parecer *trabalho de dias*. O
+jogador decide onde plantar olhando o mapa de longe — se as quatro coberturas
+tiverem o mesmo peso visual, a decisão vira tentativa e erro.
+
+O toco precisa ler como "isso já foi uma árvore", senão o jogador não entende
+por que o machado ainda pede um golpe ali.
+
+### Água e regador — 3 sprites (wave 14.1)
+
+O regador vai ter **carga** (15 tiles) e enche num poço de posição fixa.
+
+| Sprite | Onde | Nota |
+|---|---|---|
+| Poço / água | `assets/tiles/` | O tile onde se enche. Fica perto da casa |
+| Regador cheio | `assets/items/` | Ícone 16×16 na hotbar |
+| Regador vazio | `assets/items/` | Mesmo regador, estado vazio — a leitura é a carga |
+
+Cheio e vazio precisam ser **o mesmo regador** em dois estados, pela mesma razão
+que a terra seca e a molhada são a mesma terra (seção 3): dois desenhos
+diferentes leem como dois itens, não como um item que acabou.
 
 ---
 
