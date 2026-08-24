@@ -6,6 +6,7 @@
 script = ExtResource("1_def_estabelecimento")
 id = "moinho"
 nome = "Moinho"
+sprite = "res://assets/objects/Free_Chicken_House.png"
 item_entrada = "trigo"
 item_saida = "farinha"
 entram = 2

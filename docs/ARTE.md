@@ -479,16 +479,33 @@ o que ele está carregando sem ler o nome.
 
 ### Moinho e padaria — os dois prédios da cidade
 
-Ainda **não desenhe**. O código da wave 12 os trata como `.tres` de dados, sem
-sprite nenhum, e a cidade só existe como esboço de retângulo no playground. O
-que já está travado e não vai mudar:
+O campo de sprite **já existe**: `data/cidade/moinho.tres` e `padaria.tres`
+trazem um campo `sprite` no inspector, com o mesmo funcionamento do ícone de
+item — salvar o PNG na pasta e apontar o caminho liga a arte ao jogo, sem abrir
+cena nenhuma. A cena do prédio (colisor, área de interação, âncora do pé) já
+está montada e é a mesma para os dois.
+
+| Sprite | Pasta | Campo do `.tres` |
+|---|---|---|
+| Moinho | `assets/objects/` | `sprite` de `moinho.tres` |
+| Padaria | `assets/objects/` | `sprite` de `padaria.tres` |
+
+Tamanho livre, mas múltiplo de 16 e **em pé**: o código ancora o prédio pelo pé,
+então o (0,0) do desenho é o chão onde o jogador encosta. Largura maior que
+64px começa a atrapalhar a distância entre um prédio e o vizinho.
+
+O que já está travado e não vai mudar:
 
 - são **dois** estabelecimentos no slice, moinho e padaria;
 - cada um é um **ponto de interação** no mapa da cidade, não um cenário de
   fundo — o jogador chega, entrega, e volta depois para buscar;
-- eles precisam mostrar, de longe, que **têm coisa pronta esperando**. O formato
-  desse aviso (fumaça, luz na janela, ícone flutuante) é decisão de arte e ainda
-  não foi tomada — traga uma proposta.
+- eles precisam mostrar, de longe, que **têm coisa pronta esperando**.
+
+Sobre esse aviso: a cena hoje o trata como **ícone flutuante** — um sprite
+separado, acima do prédio, que acende quando a encomenda fica pronta e apaga
+quando o jogador busca. É um segundo PNG, não uma variação do prédio. Se a
+proposta de arte for outra (fumaça saindo da chaminé, luz na janela), ela muda a
+cena e precisa ser combinada antes de desenhar — traga a proposta.
 
 ### Cultura gigante
 

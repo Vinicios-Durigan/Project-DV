@@ -1,6 +1,6 @@
 extends GutTest
 
-## `game/dev/icones.gd` é a ponte entre o caminho que `sim/` guarda e a textura
+## `game/icones.gd` é a ponte entre o caminho que `sim/` guarda e a textura
 ## que `game/` desenha.
 ##
 ## O que ela precisa garantir é o contrário do que parece: não é que o ícone

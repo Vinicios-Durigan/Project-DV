@@ -43,6 +43,16 @@ const PRAZO_PADRAO: int = 240
 @export var id: String = ""
 @export var nome: String = ""
 
+## O PNG do prédio na cidade. É **caminho**, não `Texture2D`: `sim/` é lógica
+## pura e não conhece tipo de engine — quem transforma um no outro é `Icones`,
+## do lado de `game/`. Mesmo padrão de `ItemDef.sprite`.
+##
+## Vazio é o default que fecha a porta, no sentido desta seção: o prédio nasce
+## no mapa sem desenho, e quem decide o que aparece no lugar é a tela. Arte
+## faltando não pode impedir a mecânica de ser jogada — é a mesma promessa que
+## deixa o playground rodar com meia dúzia de sprites prontos.
+@export_file("*.png") var sprite: String = ""
+
 @export_group("Receita")
 ## Id do item que o jogador entrega.
 @export var item_entrada: String = ""

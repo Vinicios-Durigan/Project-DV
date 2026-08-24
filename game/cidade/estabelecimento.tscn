@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://22j5m2xul27j"]
+
+[ext_resource type="Script" uid="uid://8wvhkjfkmnoq" path="res://game/cidade/estabelecimento.gd" id="1_wfiv5"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_d04jq"]
+size = Vector2(59, 28)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_02peo"]
+size = Vector2(30, 11.5)
+
+[node name="Estabelecimento" type="Node2D"]
+script = ExtResource("1_wfiv5")
+
+[node name="Arte" type="Sprite2D" parent="."]
+
+[node name="Selo" type="Sprite2D" parent="."]
+position = Vector2(0, -56)
+
+[node name="AreaInteracao" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AreaInteracao"]
+position = Vector2(0, 5)
+shape = SubResource("RectangleShape2D_d04jq")
+
+[node name="Bloqueio" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Bloqueio"]
+position = Vector2(0, 3.25)
+shape = SubResource("RectangleShape2D_02peo")
+debug_color = Color(0.8881934, 0.30041605, 0.3553869, 0.41960785)
