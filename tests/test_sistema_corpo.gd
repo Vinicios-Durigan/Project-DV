@@ -292,12 +292,15 @@ func test_o_sistema_entra_no_tick_depois_do_farm() -> void:
 			corpo = i
 	assert_gt(corpo, farm, "o corpo lê eventos de trabalho já emitidos no tick")
 
-func test_o_corpo_entra_no_save_no_fim_do_arquivo() -> void:
+## O bloco entrou depois de todos os que já existiam — é o que faz um save antigo
+## carregar sem migração. Deixou de ser o último quando os ofícios chegaram, e
+## isso é o esperado: cada wave nova empilha o seu no fim.
+func test_o_corpo_entra_no_save_depois_dos_blocos_antigos() -> void:
 	var world := SimFactory.new().build()
 	assert_true(world.snapshot().has(SimFactory.CHAVE_CORPO),
 			"state que não é registrado não existe para o save")
 	var chaves := world.state_keys()
-	assert_eq(chaves[chaves.size() - 1], SimFactory.CHAVE_CORPO,
+	assert_gt(chaves.find(SimFactory.CHAVE_CORPO), chaves.find(SimFactory.CHAVE_TERRENO),
 			"bloco novo entra no fim — save antigo carrega sem migração")
 
 func test_sistema_nasce_com_state_proprio() -> void:
@@ -582,3 +585,125 @@ func test_o_corpo_recebe_o_catalogo_de_itens_da_fabrica() -> void:
 					"o corpo tem que enxergar o .tres do pão")
 			return
 	fail_test("o SistemaCorpo sumiu do tick")
+
+
+# --- O corpo aprende (wave 17) ---
+
+## As vantagens chegam por evento e o corpo guarda a **própria** cópia. Ele nunca
+## abre o state dos ofícios — mesmo padrão de contratos↔cidade, e é o que mantém
+## "ninguém lê state alheio" de pé com dois sistemas dependendo de um terceiro.
+
+func _escolheu(vantagem_id: String, nivel: int,
+		player_id: int = JOGADOR) -> VantagemEscolhidaEvent:
+	var evento := VantagemEscolhidaEvent.new()
+	evento.player_id = player_id
+	evento.vantagem_id = vantagem_id
+	evento.nivel = nivel
+	return evento
+
+## Os ids são os mesmos dos dois lados. Sem isto, uma renomeação no tabuleiro
+## desligaria o efeito em silêncio — e o jogador teria pago o ponto.
+func test_os_ids_das_vantagens_batem_com_o_tabuleiro() -> void:
+	assert_eq(SistemaCorpo.MAOS_LEVES, SistemaOficios.MAOS_LEVES)
+	assert_eq(SistemaCorpo.COSTAS_LARGAS, SistemaOficios.COSTAS_LARGAS)
+
+func test_sem_vantagem_o_corpo_e_o_de_sempre() -> void:
+	assert_eq(_sistema.custo_para(JOGADOR, SistemaCorpo.PLANTAR),
+			SistemaCorpo.CUSTO_PLANTAR, "o default preserva o comportamento de hoje")
+	assert_eq(_sistema.maxima_de(JOGADOR), EstadoCorpo.ESTAMINA_PADRAO)
+
+func test_maos_leves_nivel_um_zera_o_plantar() -> void:
+	_sistema.react(_escolheu(SistemaCorpo.MAOS_LEVES, 1))
+	assert_eq(_sistema.custo_para(JOGADOR, SistemaCorpo.PLANTAR), 0,
+			"a semente entra na terra de graça")
+	assert_eq(_sistema.custo_para(JOGADOR, SistemaCorpo.COLHER),
+			SistemaCorpo.CUSTO_COLHER, "colher ainda cansa — isso é o nível 2")
+
+func test_maos_leves_nivel_dois_zera_o_colher_tambem() -> void:
+	_sistema.react(_escolheu(SistemaCorpo.MAOS_LEVES, 2))
+	assert_eq(_sistema.custo_para(JOGADOR, SistemaCorpo.PLANTAR), 0)
+	assert_eq(_sistema.custo_para(JOGADOR, SistemaCorpo.COLHER), 0)
+
+func test_maos_leves_nao_baixa_o_preco_de_arar() -> void:
+	_sistema.react(_escolheu(SistemaCorpo.MAOS_LEVES, 2))
+	assert_eq(_sistema.custo_para(JOGADOR, SistemaCorpo.ARAR), SistemaCorpo.CUSTO_ARAR,
+			"o trabalho pesado do ciclo continua pesado")
+
+func test_plantar_com_maos_leves_nao_cansa() -> void:
+	_sistema.react(_escolheu(SistemaCorpo.MAOS_LEVES, 1))
+	var eventos := _sistema.react(_plantou())
+	assert_eq(_estado.estamina_de(JOGADOR), EstadoCorpo.ESTAMINA_PADRAO,
+			"custo zero é golpe de graça")
+	assert_eq(eventos, [] as Array[SimEvent],
+			"e sem desconto não há evento — mudou nada, conta nada")
+
+## A tabela de XP é a dos custos **de tabela**, não a do corpo com vantagem. Se
+## Mãos leves zerasse o XP de plantar, a vantagem se puniria sozinha.
+func test_maos_leves_nao_apaga_o_aprendizado() -> void:
+	assert_eq(SistemaOficios.new().xp_do_trabalho(SistemaCorpo.PLANTAR),
+			SistemaCorpo.CUSTO_PLANTAR,
+			"o que o gesto ensina não depende de quanto ele cansa hoje")
+
+func test_costas_largas_levanta_a_maxima() -> void:
+	_sistema.react(_escolheu(SistemaCorpo.COSTAS_LARGAS, 1))
+	assert_eq(_sistema.maxima_de(JOGADOR),
+			EstadoCorpo.ESTAMINA_PADRAO + SistemaCorpo.BONUS_COSTAS_LARGAS)
+
+func test_costas_largas_no_teto_soma_dois_niveis() -> void:
+	_sistema.react(_escolheu(SistemaCorpo.COSTAS_LARGAS, 2))
+	assert_eq(_sistema.maxima_de(JOGADOR),
+			EstadoCorpo.ESTAMINA_PADRAO + 2 * SistemaCorpo.BONUS_COSTAS_LARGAS)
+
+## Comprar no meio do dia entrega o corpo novo na hora — senão o jogador gasta o
+## ponto exausto e não sente nada até dormir, e a compra parece quebrada.
+func test_costas_largas_entrega_o_folego_na_hora() -> void:
+	_estado.gasta(JOGADOR, 100)
+	_sistema.react(_escolheu(SistemaCorpo.COSTAS_LARGAS, 1))
+	assert_eq(_estado.estamina_de(JOGADOR),
+			EstadoCorpo.ESTAMINA_PADRAO - 100 + SistemaCorpo.BONUS_COSTAS_LARGAS,
+			"o teto novo vem com o fôlego novo")
+
+## Mesma regra da comida: a vantagem evita o desmaio, nunca o desfaz. O dia dele
+## já acabou no golpe anterior.
+func test_costas_largas_nao_levanta_quem_esta_no_chao() -> void:
+	_estado.gasta(JOGADOR, EstadoCorpo.ESTAMINA_PADRAO)
+	_sistema.react(_escolheu(SistemaCorpo.COSTAS_LARGAS, 1))
+	assert_eq(_estado.estamina_de(JOGADOR), 0, "o fôlego novo não desfaz o desmaio")
+	assert_eq(_sistema.maxima_de(JOGADOR),
+			EstadoCorpo.ESTAMINA_PADRAO + SistemaCorpo.BONUS_COSTAS_LARGAS,
+			"mas o teto sobe, e amanhã ele acorda maior")
+
+func test_a_vantagem_de_um_nao_e_do_outro() -> void:
+	_sistema.react(_escolheu(SistemaCorpo.MAOS_LEVES, 1, 1))
+	assert_eq(_sistema.custo_para(JOGADOR, SistemaCorpo.PLANTAR),
+			SistemaCorpo.CUSTO_PLANTAR, "ponto gasto por um não alivia o outro")
+
+func test_vantagem_de_outro_dono_nao_mexe_no_corpo() -> void:
+	_sistema.react(_escolheu(SistemaOficios.REGA_FUNDA, 1))
+	assert_eq(_sistema.custo_para(JOGADOR, SistemaCorpo.REGAR), SistemaCorpo.CUSTO_REGAR,
+			"Rega funda é da lavoura — o corpo ignora o que não é dele")
+	assert_eq(_sistema.maxima_de(JOGADOR), EstadoCorpo.ESTAMINA_PADRAO)
+
+## Quantas ações ainda cabem é a pergunta da aba Corpo, e ela tem que enxergar a
+## vantagem: com plantar de graça, o número é o dia inteiro.
+func test_acoes_restantes_enxerga_a_vantagem() -> void:
+	_sistema.react(_escolheu(SistemaCorpo.MAOS_LEVES, 1))
+	assert_eq(_sistema.acoes_restantes(SistemaCorpo.PLANTAR, JOGADOR), 0,
+			"trabalho de graça não tem conta de quantos cabem — cabem todos")
+
+## O laço inteiro pela porta da frente: a compra sai do tabuleiro, atravessa a
+## fila do `SimWorld` e chega ao corpo sem ninguém ler state alheio.
+func test_a_compra_chega_ao_corpo_pela_fila() -> void:
+	var factory := SimFactory.new()
+	var world := factory.build()
+	var oficios := factory.get_estado_oficios()
+	oficios.credita_pontos(JOGADOR, SistemaOficios.CAMPO, 1)
+
+	var acao := EscolherVantagemAction.new()
+	acao.player_id = JOGADOR
+	acao.vantagem_id = SistemaOficios.COSTAS_LARGAS
+	world.handle(acao)
+
+	assert_eq(factory.get_estado_corpo().maxima_de(JOGADOR),
+			EstadoCorpo.ESTAMINA_PADRAO + SistemaCorpo.BONUS_COSTAS_LARGAS,
+			"o efeito viaja por evento, e o dono guarda a própria cópia")

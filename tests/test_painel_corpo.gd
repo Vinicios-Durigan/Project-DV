@@ -83,8 +83,20 @@ func test_lista_todos_os_trabalhos_que_a_sim_conhece() -> void:
 
 func test_o_custo_de_cada_trabalho_e_o_do_sistema() -> void:
 	for trabalho in _painel.trabalhos():
-		assert_eq(_painel.custo(trabalho), _sistema().custo_de(trabalho),
+		assert_eq(_painel.custo(trabalho), _sistema().custo_para(JOGADOR, trabalho),
 				"o custo de '%s' é resposta do sistema" % trabalho)
+
+## O custo mostrado é o **deste** corpo, não o de tabela: quem comprou Mãos leves
+## planta de graça, e esta aba não pode ser a única tela que ainda cobra por isso.
+func test_a_tabela_enxerga_a_vantagem_comprada() -> void:
+	var evento := VantagemEscolhidaEvent.new()
+	evento.player_id = JOGADOR
+	evento.vantagem_id = SistemaOficios.MAOS_LEVES
+	evento.nivel = 1
+	_sistema().react(evento)
+	assert_eq(_painel.custo(SistemaCorpo.PLANTAR), 0)
+	assert_eq(_painel.custo(SistemaCorpo.ARAR), SistemaCorpo.CUSTO_ARAR,
+			"e só o que a vantagem alivia muda")
 
 func test_quantas_acoes_cabem_e_o_do_sistema() -> void:
 	_corpo().gasta(JOGADOR, 150)

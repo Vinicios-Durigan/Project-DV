@@ -15,6 +15,29 @@ extends SimSystem
 ## Crescimento é na virada do dia, nunca contínuo: o sistema reage a
 ## `DayEndedEvent` e emite a cascata da manhã na ordem dos plots.
 
+## As vantagens que **a lavoura** paga (wave 17). O id é o mesmo do tabuleiro do
+## `SistemaOficios`, escrito aqui de novo de propósito: a lavoura não referencia
+## o sistema que a ensina, senão os dois passariam a se conhecer em círculo. Quem
+## prende os dois lados é o teste — id divergente desligaria o efeito em
+## silêncio, depois de o jogador já ter pago o ponto.
+const REGA_FUNDA: String = "rega_funda"
+const COLHEITA_ESPECIALIZADA: String = "colheita_especializada"
+
+## Quantos canteiros por dia cada nível de Rega funda alcança: 4 no primeiro
+## ponto, 8 no segundo. É cota, e não interruptor — a vantagem compra rota, e a
+## decisão de **quais** canteiros molhar continua sendo do jogador.
+const CANTEIROS_POR_NIVEL: int = 4
+
+## Quantas viradas de dia a mais a água funda aguenta. Uma: regou hoje, cresce
+## hoje à noite e amanhã à noite. Duas seriam a rega deixando de existir como
+## rota, e a rota é metade do dia (wave 14.1).
+const DIAS_EXTRA_DE_AGUA: int = 1
+
+## Quanto a Colheita especializada soma na cultura escolhida. O bônus nasce na
+## **colheita**, nunca no preço: trigo a 2× de preço mataria o moinho e, com ele,
+## a tese do jogo (PRINCIPIOS §2).
+const BONUS_DA_ESPECIALIZACAO: int = 1
+
 const MOTIVO_TILE_NAO_ARADO: String = "tile_nao_arado"
 const MOTIVO_TILE_OCUPADO: String = "tile_ocupado"
 const MOTIVO_CULTURA_DESCONHECIDA: String = "cultura_desconhecida"
@@ -55,7 +78,53 @@ func react(event: SimEvent) -> Array[SimEvent]:
 		return _advance_day(event as DayEndedEvent)
 	if event is TerrenoMudouEvent:
 		return _perde_o_arado(event as TerrenoMudouEvent)
+	if event is VantagemEscolhidaEvent:
+		return _aprende(event as VantagemEscolhidaEvent)
 	return []
+
+
+## A lavoura aprendeu alguma coisa (wave 17). O efeito chega por evento e a cópia
+## fica aqui: ela nunca abre o state dos ofícios, e é isso que mantém "ninguém lê
+## state alheio" de pé com dois sistemas dependendo de um terceiro.
+##
+## Vantagem que não é deste sistema passa direto — a fila oferece todo evento a
+## todo mundo, e ignorar o que não é seu é o normal.
+func _aprende(event: VantagemEscolhidaEvent) -> Array[SimEvent]:
+	if event.vantagem_id != REGA_FUNDA and event.vantagem_id != COLHEITA_ESPECIALIZADA:
+		return []
+
+	_state.guarda_vantagem(event.vantagem_id, event.nivel)
+	if event.vantagem_id == COLHEITA_ESPECIALIZADA:
+		_state.define_cultura_especializada(event.cultura)
+	return []
+
+
+# --- As vantagens da lavoura (consultas) ---
+
+## Quantos canteiros por dia a Rega funda alcança. Zero sem a vantagem.
+func cota_de_rega_funda() -> int:
+	return _state.nivel_da_vantagem(REGA_FUNDA) * CANTEIROS_POR_NIVEL
+
+## Quantos canteiros já beberam água funda hoje.
+func regas_fundas_hoje() -> int:
+	return _state.regas_fundas_hoje()
+
+## Ainda cabe água funda hoje? É o que decide se a próxima rega segura ou seca.
+func tem_cota_de_rega_funda() -> bool:
+	return _state.regas_fundas_hoje() < cota_de_rega_funda()
+
+## A cultura que rende a mais, ou `""` se ninguém se especializou.
+func cultura_especializada() -> String:
+	return _state.cultura_especializada()
+
+## Quanto esta cultura rende por colheita, já com a especialização. É a pergunta
+## que a tela faz, e ela é de regra: quem soma o +1 é o dono da colheita.
+func rendimento_de(crop_id: String) -> int:
+	var def := _catalog.get_def(crop_id)
+	if def == null:
+		return 0
+	var bonus := BONUS_DA_ESPECIALIZACAO if crop_id == _state.cultura_especializada() else 0
+	return def.rende_por_colheita + bonus
 
 ## O terreno fechou por cima de um tile arado: o preparo se perde.
 ##
@@ -139,11 +208,21 @@ func _plant(action: PlantCropAction) -> Array[SimEvent]:
 	event.estagio_pronta = def.estagio_pronta()
 	return [event]
 
+## Rega. Com Rega funda comprada, os primeiros canteiros do dia guardam água para
+## a noite seguinte também — e **quais** são eles é decisão do jogador, pela
+## ordem em que ele rega. Determinístico de propósito: sorte no resultado foi
+## descartada no GAMEPLAY com motivo.
+##
+## A cota só é gasta por rega que aconteceu de verdade: tile seco não bebe água
+## nem consome o dia de ninguém.
 func _water(action: WaterPlotAction) -> Array[SimEvent]:
 	if not pode_regar(action.x, action.y):
 		return []
 	var plot := _state.get_plot(action.x, action.y)
 	plot.regada = true
+	if tem_cota_de_rega_funda():
+		plot.dias_de_agua = DIAS_EXTRA_DE_AGUA
+		_state.conta_rega_funda()
 
 	var event := PlotWateredEvent.new()
 	event.player_id = action.player_id
@@ -168,7 +247,9 @@ func _harvest(action: HarvestCropAction) -> Array[SimEvent]:
 	event.y = action.y
 	event.crop_id = plot.crop_id
 	event.item_id = def.item_colheita_id()
-	event.qtd = def.rende_por_colheita
+	# A Colheita especializada soma aqui, na colheita, e nunca no preço: o bônus
+	# tem que passar pelo moinho como qualquer outro punhado (PRINCIPIOS §2).
+	event.qtd = rendimento_de(plot.crop_id)
 	event.rebrota = def.colheitas_infinitas
 
 	if def.colheitas_infinitas:
@@ -197,7 +278,15 @@ func _advance_day(day: DayEndedEvent) -> Array[SimEvent]:
 		var grew := _grow(plot, day)
 		if grew != null:
 			events.append(grew)
-		plot.regada = false
+		# A terra funda gasta um dia de reserva em vez de secar. Sem reserva, é a
+		# rega de sempre: seca toda noite.
+		if plot.dias_de_agua > 0:
+			plot.dias_de_agua -= 1
+		else:
+			plot.regada = false
+
+	# Cota cheia de novo: a Rega funda é do dia, não da partida.
+	_state.zera_regas_fundas()
 
 	if day.fim_de_estacao:
 		for id in ids:

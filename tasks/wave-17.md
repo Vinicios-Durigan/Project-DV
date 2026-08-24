@@ -95,13 +95,13 @@ Chutes para calibrar jogando, como a estamina e o `DIAS_POR_CONTRATO`.
 
 ## Tarefas
 
-### 17.1 — EstadoOficios
+### 17.1 — EstadoOficios ✅
 Cria: `sim/oficios/estado_oficios.gd`, `tests/test_estado_oficios.gd`
 Faz: XP e nível por ofício, pontos disponíveis e gastos, vantagens compradas
 com nível de cada uma, cultura da especialização. `to_dict`/`from_dict` no
 bloco `oficios`. State burro: não sabe quanto custa vantagem nenhuma.
 
-### 17.2 — SistemaOficios
+### 17.2 — SistemaOficios ✅
 Cria: `sim/oficios/sistema_oficios.gd`, `tests/test_sistema_oficios.gd` (mais
 ação e eventos da wave)
 Depende de: 17.1
@@ -110,24 +110,28 @@ níveis e credita pontos; trata `EscolherVantagemAction` validando ponto, teto
 e permanência; emite os três eventos novos. O tabuleiro (custos e tetos) mora
 aqui, em constantes.
 
-### 17.3 — O corpo aprende
+### 17.3 — O corpo aprende ✅
 Altera: `sim/corpo/sistema_corpo.gd`, `tests/test_sistema_corpo.gd`
+(mais `sim/corpo/estado_corpo.gd` e `tests/test_estado_corpo.gd`: a cópia local
+mora no bloco `corpo`, e o bloco é o state)
 Depende de: 17.2
 Faz: `SistemaCorpo` reage a `VantagemEscolhidaEvent` — Mãos leves zera o custo
 de plantar (nível 1) e colher (nível 2); Costas largas soma +25 à estamina
 máxima por nível. A cópia local entra no bloco `corpo` do save com default
 que preserva o comportamento de hoje.
 
-### 17.4 — A lavoura aprende
+### 17.4 — A lavoura aprende ✅
 Altera: `sim/crops/farm_system.gd`, `tests/test_farm_system.gd`
+(mais `sim/crops/farm_state.gd`: a cópia local mora no bloco `farm`)
 Depende de: 17.2
 Faz: `FarmSystem` reage a `VantagemEscolhidaEvent` — Rega funda faz os
 primeiros N canteiros regados do dia segurarem a rega por mais um dia;
 Colheita especializada soma +1 ao rendimento da cultura escolhida. Cópia
 local no bloco `farm`, com default inerte.
 
-### 17.5 — A aba Ofícios
+### 17.5 — A aba Ofícios ✅
 Cria: `game/dev/painel_oficios.gd`, `tests/test_painel_oficios.gd`
+(mais o registro da aba em `game/dev/painel_mochila.gd`, que é quem monta o Tab)
 Depende de: 17.2
 Faz: aba do Tab com os dois ofícios — barra de XP até o próximo nível, pontos
 disponíveis, o tabuleiro inteiro com custo e teto, botão de comprar que vira
@@ -140,6 +144,12 @@ ao sistema e formata.
 - Todos os números são chute: tabela de XP, limiares de nível, custos e tetos
   do tabuleiro. A wave só fecha depois de uma estação jogada no playground
   conferindo se os 8 pontos chegam num ritmo que sustenta escolha.
+- **Com as 4 vantagens desta fatia, o tabuleiro fecha.** 8 pontos ganháveis
+  contra 8 de custo total: quem maximizar os dois ofícios leva tudo. A tensão
+  "nunca dá para ter tudo" continua valendo *dentro* de cada ofício (a Lavoura
+  rende 4 e o ramo dela custa 6), e a folga geral só volta na 17.1. Se a estação
+  jogada mostrar que os dois ofícios chegam ao nível 4, os limiares sobem antes
+  de a 17.1 entrar.
 - **Wave 17.1 — os outros donos aprendem**: Braço de poço (InventorySystem),
   Golpe certeiro e Terra domada (SistemaTerreno), Passo firme (game/ lê do
   snapshot). O tabuleiro cresce quando os efeitos existirem.

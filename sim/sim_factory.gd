@@ -31,6 +31,7 @@ const CHAVE_CIDADE: String = "cidade"
 const CHAVE_CONTRATOS: String = "contratos"
 const CHAVE_TERRENO: String = "terreno"
 const CHAVE_CORPO: String = "corpo"
+const CHAVE_OFICIOS: String = "oficios"
 
 ## Enquanto não existe co-op, o jogador é sempre o 0 — mas o id existe desde já.
 const PLAYER_PADRAO: int = 0
@@ -64,6 +65,7 @@ var _cidade: EstadoCidade
 var _contratos: EstadoContratos
 var _terreno: EstadoTerreno
 var _corpo: EstadoCorpo
+var _oficios: EstadoOficios
 var _resolvedor: ResolvedorUso
 
 ## As definições dos estabelecimentos são carregadas pelo próprio
@@ -118,6 +120,9 @@ func get_estado_contratos() -> EstadoContratos:
 func get_estado_corpo() -> EstadoCorpo:
 	return _corpo
 
+func get_estado_oficios() -> EstadoOficios:
+	return _oficios
+
 ## O mundo pronto para jogar: sistemas na ordem fixa, states no save e a mochila
 ## do primeiro dia. Quem vai carregar um save chama `restore()` logo depois — o
 ## restore substitui todo bloco registrado, inclusive o da partida nova.
@@ -131,6 +136,7 @@ func build() -> SimWorld:
 	_contratos = EstadoContratos.new()
 	_terreno = EstadoTerreno.new()
 	_corpo = EstadoCorpo.new()
+	_oficios = EstadoOficios.new()
 
 	var world := SimWorld.new()
 	# A ordem é regra de jogo: barrar fora de lugar → validar → vender →
@@ -156,6 +162,15 @@ func build() -> SimWorld:
 	# o corpo recebê-lo. O catálogo vai junto porque quanto uma comida restaura é
 	# campo de `.tres` — comida nova chega ao corpo sem tocar em código.
 	world.register_system(SistemaCorpo.new(_corpo, _items))
+	# Logo depois do Corpo, porque é o mesmo golpe: o que cansa é o que ensina, e
+	# a tabela de XP é lida da dele. Para reações a posição não muda nada (a fila
+	# oferece cada evento a todos), e a razão de estar aqui é de leitura.
+	#
+	# A única ação que ele trata não depende de sistema nenhum — comprar vantagem
+	# não cobra item, não cobra dinheiro e não pode ser recusada por outro. O
+	# `VantagemEscolhidaEvent` que sai daqui chega ao Corpo e ao Farm pela fila,
+	# mesmo eles vindo antes na lista.
+	world.register_system(SistemaOficios.new(_oficios, _crops))
 	world.register_system(SistemaCidade.new(_cidade, _dir_estabelecimentos))
 	# Depois da Cidade: o contrato é o degrau seguinte da mesma escada e reage ao
 	# `RelacaoSubiuEvent` que ela emite. A posição só importa para as ações —
@@ -175,6 +190,7 @@ func build() -> SimWorld:
 	world.register_state(CHAVE_CONTRATOS, _contratos)
 	world.register_state(CHAVE_TERRENO, _terreno)
 	world.register_state(CHAVE_CORPO, _corpo)
+	world.register_state(CHAVE_OFICIOS, _oficios)
 
 	# Depois dos states, porque ele lê dois deles. Não entra na fila do tick: o
 	# resolvedor responde perguntas, não trata ações.

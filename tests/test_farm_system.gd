@@ -216,3 +216,169 @@ func test_consultas_do_reticulo_nao_mudam_nada() -> void:
 	assert_false(_system.pode_colher(1, 1), "ainda verde")
 	_state.get_plot(1, 1).estagio = 3
 	assert_true(_system.pode_colher(1, 1))
+
+
+# --- A lavoura aprende (wave 17) ---
+
+## As vantagens chegam por `VantagemEscolhidaEvent` e a lavoura guarda a própria
+## cópia. Ela nunca abre o state dos ofícios — mesmo padrão do corpo.
+
+func _escolheu(vantagem_id: String, nivel: int,
+		cultura: String = "") -> VantagemEscolhidaEvent:
+	var evento := VantagemEscolhidaEvent.new()
+	evento.player_id = 0
+	evento.vantagem_id = vantagem_id
+	evento.nivel = nivel
+	evento.cultura = cultura
+	return evento
+
+func _dia_virou() -> Array[SimEvent]:
+	return _system.react(DayEndedEvent.new())
+
+## Os ids são os mesmos dos dois lados. Sem isto, uma renomeação no tabuleiro
+## desligaria o efeito em silêncio — depois de o jogador já ter pago o ponto.
+func test_os_ids_das_vantagens_batem_com_o_tabuleiro() -> void:
+	assert_eq(FarmSystem.REGA_FUNDA, SistemaOficios.REGA_FUNDA)
+	assert_eq(FarmSystem.COLHEITA_ESPECIALIZADA, SistemaOficios.COLHEITA_ESPECIALIZADA)
+
+
+# --- Rega funda ---
+
+## Sem a vantagem, a rega é de um dia só: era assim antes da wave 17 e continua
+## sendo para quem não gastou o ponto.
+func test_sem_rega_funda_a_agua_seca_na_virada() -> void:
+	_arar(1, 1)
+	_regar(1, 1)
+	_dia_virou()
+	assert_false(_state.get_plot(1, 1).regada, "o default preserva o de hoje")
+
+func test_rega_funda_segura_a_agua_ate_depois_de_amanha() -> void:
+	_system.react(_escolheu(FarmSystem.REGA_FUNDA, 1))
+	_arar(1, 1)
+	_regar(1, 1)
+
+	_dia_virou()
+	assert_true(_state.get_plot(1, 1).regada, "a terra funda ainda está molhada")
+	_dia_virou()
+	assert_false(_state.get_plot(1, 1).regada, "mas não para sempre — é um dia a mais")
+
+## Uma rega, dois crescimentos: é isso que a vantagem compra. Ela devolve
+## relógio, e não preço de venda.
+func test_uma_rega_funda_faz_a_planta_crescer_dois_dias() -> void:
+	_system.react(_escolheu(FarmSystem.REGA_FUNDA, 1))
+	_plantar_em(1, 1)
+	_regar(1, 1)
+
+	assert_eq(_estagio(1, 1), 0)
+	_dia_virou()
+	assert_eq(_estagio(1, 1), 1, "cresceu com a rega de ontem")
+	_dia_virou()
+	assert_eq(_estagio(1, 1), 2, "e de novo, sem ninguém voltar lá")
+
+func _plantar_em(x: int, y: int) -> void:
+	_arar(x, y)
+	_plantar("rabanete", x, y)
+
+func _estagio(x: int, y: int) -> int:
+	return _state.get_plot(x, y).estagio
+
+## O teto é o que faz a vantagem ser decisão e não interruptor: os primeiros 4
+## canteiros do dia seguram água, o quinto é rega comum. Quais são os quatro é o
+## jogador quem decide, pela ordem em que rega — nada de sorteio.
+func test_rega_funda_pega_so_os_primeiros_canteiros_do_dia() -> void:
+	_system.react(_escolheu(FarmSystem.REGA_FUNDA, 1))
+	for i in 5:
+		_arar(i, 0)
+		_regar(i, 0)
+	_dia_virou()
+
+	for i in 4:
+		assert_true(_state.get_plot(i, 0).regada,
+				"o canteiro %d entrou na cota do dia" % i)
+	assert_false(_state.get_plot(4, 0).regada,
+			"o quinto é rega comum — a cota é 4 no nível 1")
+
+func test_o_nivel_dois_dobra_a_cota() -> void:
+	_system.react(_escolheu(FarmSystem.REGA_FUNDA, 2))
+	assert_eq(_system.cota_de_rega_funda(), 2 * FarmSystem.CANTEIROS_POR_NIVEL,
+			"segundo ponto, cota dobrada")
+
+func test_a_cota_volta_a_encher_todo_dia() -> void:
+	_system.react(_escolheu(FarmSystem.REGA_FUNDA, 1))
+	for i in 4:
+		_arar(i, 0)
+		_regar(i, 0)
+	assert_eq(_system.regas_fundas_hoje(), 4, "a cota do dia acabou")
+
+	_dia_virou()
+	assert_eq(_system.regas_fundas_hoje(), 0, "dia novo, cota cheia")
+
+## Regar tile seco não é rega: não pode gastar a cota do dia.
+func test_rega_recusada_nao_gasta_a_cota() -> void:
+	_system.react(_escolheu(FarmSystem.REGA_FUNDA, 1))
+	_regar(9, 9)
+	assert_eq(_system.regas_fundas_hoje(), 0,
+			"tile que ninguém arou não bebe água nem gasta cota")
+
+
+# --- Colheita especializada ---
+
+func test_sem_especializacao_o_rendimento_e_o_do_tres() -> void:
+	_madura("rabanete", 1, 1)
+	var eventos := _colher(1, 1)
+	var colhida := eventos[0] as CropHarvestedEvent
+	assert_eq(colhida.qtd, _catalog.get_def("rabanete").rende_por_colheita)
+
+func test_a_cultura_escolhida_rende_um_a_mais() -> void:
+	_system.react(_escolheu(FarmSystem.COLHEITA_ESPECIALIZADA, 1, "rabanete"))
+	_madura("rabanete", 1, 1)
+	var colhida := _colher(1, 1)[0] as CropHarvestedEvent
+	assert_eq(colhida.qtd, _catalog.get_def("rabanete").rende_por_colheita
+			+ FarmSystem.BONUS_DA_ESPECIALIZACAO,
+			"o +1 é da cultura escolhida, e ele nasce na colheita — nunca no preço")
+
+func test_as_outras_culturas_continuam_iguais() -> void:
+	_system.react(_escolheu(FarmSystem.COLHEITA_ESPECIALIZADA, 1, "rabanete"))
+	_madura("morango", 2, 2)
+	var colhida := _colher(2, 2)[0] as CropHarvestedEvent
+	assert_eq(colhida.qtd, _catalog.get_def("morango").rende_por_colheita,
+			"escolher uma é abrir mão das outras")
+
+func test_a_especializacao_vale_na_rebrota_tambem() -> void:
+	_system.react(_escolheu(FarmSystem.COLHEITA_ESPECIALIZADA, 1, "morango"))
+	_madura("morango", 2, 2)
+	var primeira := _colher(2, 2)[0] as CropHarvestedEvent
+	_state.get_plot(2, 2).estagio = _catalog.get_def("morango").estagio_pronta()
+	var segunda := _colher(2, 2)[0] as CropHarvestedEvent
+	assert_eq(primeira.qtd, segunda.qtd, "a planta que rebrota rende igual toda vez")
+
+
+# --- O que não é dela ---
+
+func test_vantagem_de_outro_dono_nao_mexe_na_lavoura() -> void:
+	_system.react(_escolheu(SistemaOficios.MAOS_LEVES, 2))
+	_arar(1, 1)
+	_regar(1, 1)
+	_dia_virou()
+	assert_false(_state.get_plot(1, 1).regada,
+			"Mãos leves é do corpo — a lavoura ignora o que não é dela")
+
+## O laço inteiro pela porta da frente: a compra atravessa a fila do `SimWorld` e
+## chega à lavoura sem ninguém ler state alheio.
+func test_a_compra_chega_a_lavoura_pela_fila() -> void:
+	var factory := SimFactory.new()
+	var world := factory.build()
+	factory.get_estado_oficios().credita_pontos(0, SistemaOficios.LAVOURA, 1)
+
+	var acao := EscolherVantagemAction.new()
+	acao.player_id = 0
+	acao.vantagem_id = SistemaOficios.REGA_FUNDA
+	world.handle(acao)
+
+	for system in world.get_systems():
+		if system is FarmSystem:
+			assert_eq((system as FarmSystem).cota_de_rega_funda(),
+					FarmSystem.CANTEIROS_POR_NIVEL,
+					"o efeito viaja por evento, e o dono guarda a própria cópia")
+			return
+	fail_test("o FarmSystem sumiu do tick")

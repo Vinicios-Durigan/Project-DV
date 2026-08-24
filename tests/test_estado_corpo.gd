@@ -230,3 +230,62 @@ func test_save_editado_a_mao_nao_tem_refeicao_negativa() -> void:
 func test_quem_so_comeu_tambem_entra_no_save() -> void:
 	_estado.registra_refeicao(JOGADOR)
 	assert_eq(_estado.jogadores(), [JOGADOR] as Array[int])
+
+
+# --- A cópia local das vantagens (wave 17) ---
+
+## O corpo guarda o que **ele** cobra, não o tabuleiro inteiro: o efeito chega
+## por `VantagemEscolhidaEvent` e o state dos ofícios continua fechado.
+
+const MAOS_LEVES: String = "maos_leves"
+
+func test_corpo_sem_vantagem_e_o_de_sempre() -> void:
+	assert_eq(_estado.nivel_da_vantagem(JOGADOR, MAOS_LEVES), 0,
+			"o default é o comportamento de antes da wave 17")
+
+func test_guardar_vantagem_anota_o_nivel() -> void:
+	_estado.guarda_vantagem(JOGADOR, MAOS_LEVES, 1)
+	assert_eq(_estado.nivel_da_vantagem(JOGADOR, MAOS_LEVES), 1)
+	_estado.guarda_vantagem(JOGADOR, MAOS_LEVES, 2)
+	assert_eq(_estado.nivel_da_vantagem(JOGADOR, MAOS_LEVES), 2)
+
+func test_vantagem_nao_regride() -> void:
+	_estado.guarda_vantagem(JOGADOR, MAOS_LEVES, 2)
+	_estado.guarda_vantagem(JOGADOR, MAOS_LEVES, 1)
+	assert_eq(_estado.nivel_da_vantagem(JOGADOR, MAOS_LEVES), 2,
+			"escolha comprada não volta, e evento repetido não rebaixa ninguém")
+
+func test_vantagem_de_um_nao_e_do_outro() -> void:
+	_estado.guarda_vantagem(JOGADOR, MAOS_LEVES, 1)
+	assert_eq(_estado.nivel_da_vantagem(OUTRO, MAOS_LEVES), 0)
+
+func test_a_vantagem_entra_no_save() -> void:
+	_estado.guarda_vantagem(JOGADOR, MAOS_LEVES, 2)
+	var bloco: Dictionary = _estado.to_dict()["jogadores"]["0"]
+	assert_eq(int(bloco["vantagens"][MAOS_LEVES]), 2)
+
+func test_save_da_wave_15_carrega_sem_vantagem() -> void:
+	_estado.from_dict({"jogadores": {"0": {"estamina": 80, "maxima": 200}}})
+	assert_eq(_estado.nivel_da_vantagem(JOGADOR, MAOS_LEVES), 0,
+			"campo ausente cai no default — sem migração")
+	assert_eq(_estado.estamina_de(JOGADOR), 80, "e o que já existia continua lá")
+
+func test_a_vantagem_sobrevive_a_ida_e_volta() -> void:
+	_estado.guarda_vantagem(JOGADOR, MAOS_LEVES, 1)
+	var outro := EstadoCorpo.new()
+	outro.from_dict(_estado.to_dict())
+	assert_eq(outro.nivel_da_vantagem(JOGADOR, MAOS_LEVES), 1,
+			"carregar o save não pode cobrar o ponto de novo")
+
+func test_save_editado_a_mao_nao_tem_vantagem_de_nivel_zero() -> void:
+	_estado.from_dict({"jogadores": {"0": {"vantagens": {MAOS_LEVES: 0}}}})
+	assert_eq(_estado.nivel_da_vantagem(JOGADOR, MAOS_LEVES), 0)
+	assert_eq(_estado.to_dict()["jogadores"]["0"]["vantagens"], {},
+			"nível zero não é vantagem — não ocupa linha no save")
+
+## O snapshot é cópia: escrever no que saiu não pode escrever no corpo.
+func test_o_snapshot_nao_e_a_caderneta_viva() -> void:
+	_estado.guarda_vantagem(JOGADOR, MAOS_LEVES, 1)
+	var bloco: Dictionary = _estado.to_dict()["jogadores"]["0"]["vantagens"]
+	bloco[MAOS_LEVES] = 99
+	assert_eq(_estado.nivel_da_vantagem(JOGADOR, MAOS_LEVES), 1)

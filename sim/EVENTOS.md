@@ -14,10 +14,10 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | `ItemLostEvent` | `InventorySystem` (mochila cheia) | ninguém ainda — aviso na tela; drop no chão é futuro |
 | `MoneyChangedEvent` | `InventorySystem` (`AddMoneyAction`) | `game/dev/playground.gd` — o dinheiro da barra de status; HUD do jogo na wave de `game/` |
 | `ItemGrantedEvent` | qualquer mecânica que conceda item (`FarmSystem`, `ShippingSystem`, `SistemaCidade`) | `InventorySystem` — reage adicionando à mochila |
-| `PlotTilledEvent` | `FarmSystem` (`TillPlotAction`) | `SistemaCorpo` — cobra o custo de arar; `game/dev/mundo_esboco.gd` — tremida da tela, swing e piscada do canteiro; troca do tile na wave de `game/` |
-| `CropPlantedEvent` | `FarmSystem` (`PlantCropAction`) | `SistemaCorpo` — cobra o custo de plantar; `game/dev/mundo_esboco.gd` — swing e piscada; sprite do estágio 0 na wave de `game/` |
-| `PlotWateredEvent` | `FarmSystem` (`WaterPlotAction`) | `SistemaCorpo` — cobra o custo de regar; `game/dev/mundo_esboco.gd` — swing, piscada e o solo escurecendo; `game/dev/mira_ferramentas.gd` — relê o medidor de carga (uma regada saiu) |
-| `CropHarvestedEvent` | `FarmSystem` (`HarvestCropAction`) | `InventorySystem` (é um `ItemGrantedEvent`); `SistemaCorpo` — cobra o custo de colher; `game/` anima o arco até o jogador |
+| `PlotTilledEvent` | `FarmSystem` (`TillPlotAction`) | `SistemaCorpo` — cobra o custo de arar; `SistemaOficios` — soma o mesmo número como XP de Lavoura; `game/dev/mundo_esboco.gd` — tremida da tela, swing e piscada do canteiro; troca do tile na wave de `game/` |
+| `CropPlantedEvent` | `FarmSystem` (`PlantCropAction`) | `SistemaCorpo` — cobra o custo de plantar; `SistemaOficios` — XP de Lavoura; `game/dev/mundo_esboco.gd` — swing e piscada; sprite do estágio 0 na wave de `game/` |
+| `PlotWateredEvent` | `FarmSystem` (`WaterPlotAction`) | `SistemaCorpo` — cobra o custo de regar; `SistemaOficios` — XP de Lavoura; `game/dev/mundo_esboco.gd` — swing, piscada e o solo escurecendo; `game/dev/mira_ferramentas.gd` — relê o medidor de carga (uma regada saiu) |
+| `CropHarvestedEvent` | `FarmSystem` (`HarvestCropAction`) | `InventorySystem` (é um `ItemGrantedEvent`); `SistemaCorpo` — cobra o custo de colher; `SistemaOficios` — XP de Lavoura; `game/` anima o arco até o jogador |
 | `CropGrewEvent` | `FarmSystem` (reage a `DayEndedEvent`) | `game/dev/mundo_esboco.gd` — a cascata da manhã-espetáculo pisca canteiro a canteiro, na ordem dos plots (e sem swing: quem trabalhou foi a noite) |
 | `CropDiedEvent` | `FarmSystem` (fim de estação, dia 28) | ninguém ainda — sprite de murcha na wave de `game/` |
 | `ItemShippedEvent` | `ShippingSystem` (`ShipItemAction`, já cobrada pelo inventário) | ninguém ainda — painel do caixote na wave de `game/` |
@@ -25,7 +25,7 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | `ItemsSoldEvent` | `ShippingSystem` (`SleepAction`, passo 1 da sequência de dormir) | `InventorySystem` — soma o dinheiro; `game/dev/medidor_dia.gd` — monta o resumo do dia com estas linhas + `DayEndedEvent` |
 | `SeedBoughtEvent` | `InventorySystem` (`BuySeedAction`) | ninguém ainda — aba de compra do painel na wave de `game/`; o `MoneyChangedEvent` e o `ItemAddedEvent` vêm logo atrás |
 | `JogadorViajouEvent` | `SistemaLocais` (`ViajarAction`, despachada quando o jogador cruza a fronteira de um terreno) | `game/dev/mundo_esboco.gd` e `game/dev/inspetor_tile.gd` — mostram onde o jogador está **segundo a sim**; quando discordar da tela, quem errou é `game/` |
-| `TerrenoMudouEvent` | `SistemaTerreno` (limpeza do jogador, propagação da noite, arado que fechou, geração inicial — o `motivo` distingue) | `FarmSystem` — desara o tile que fechou; `SistemaCorpo` — **só** o `motivo = limpeza` cansa, e o custo sai do `de` (a árvore cobra pela árvore, o toco pelo toco); `game/dev/mundo_esboco.gd` — pinta a cobertura e pisca; `game/dev/inspetor_tile.gd` — mostra a cobertura crua. Sem `player_id` quando foi a noite |
+| `TerrenoMudouEvent` | `SistemaTerreno` (limpeza do jogador, propagação da noite, arado que fechou, geração inicial — o `motivo` distingue) | `FarmSystem` — desara o tile que fechou; `SistemaCorpo` — **só** o `motivo = limpeza` cansa, e o custo sai do `de` (a árvore cobra pela árvore, o toco pelo toco); `SistemaOficios` — pelo mesmo recorte, XP de Campo; `game/dev/mundo_esboco.gd` — pinta a cobertura e pisca; `game/dev/inspetor_tile.gd` — mostra a cobertura crua. Sem `player_id` quando foi a noite |
 | `EntregaAceitaEvent` | `SistemaCidade` (`EntregarAction`, já cobrada pelo inventário) | `game/dev/painel_cidade.gd` — põe a encomenda na fila com o tempo restante |
 | `BeneficiamentoProntoEvent` | `SistemaCidade` (reage ao relógio, quando o minuto de conclusão chega) | `game/dev/painel_cidade.gd` — a linha da fila vira "pronta". Não tem `player_id`: ninguém agiu, foi o tempo |
 | `RetiradaFeitaEvent` | `SistemaCidade` (`RetirarAction`, com a taxa já cobrada pelo inventário) | `InventorySystem` (é um `ItemGrantedEvent`) — o produto entra na mochila |
@@ -40,6 +40,9 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | `EstaminaGastaEvent` | `SistemaCorpo` (reage a todo evento de trabalho: arar, plantar, regar, colher, limpar) | `game/dev/medidor_estamina.gd` — a barra da barra de status; `game/dev/painel_corpo.gd` — soma o gasto do dia, trabalho a trabalho. Leva `de`, `para`, `maxima` e o `trabalho`: a tela desenha a barra e conta o que cansou sem abrir state nenhum |
 | `DesmaiouEvent` | `SistemaCorpo` (a estamina chegou a zero) | `TimeSystem` — encerra o dia com `cause = COLLAPSED`, o mesmo caminho das 02:00. Não é recusa: o trabalho que derrubou aconteceu, e o `EstaminaGastaEvent` dele vem logo antes |
 | `ComeuEvent` | `SistemaCorpo` (`ComerAction`, já cobrada pelo inventário) | `game/dev/painel_corpo.gd` — redesenha a mesa e a barra; `game/dev/medidor_estamina.gd` — a barra da barra de status. Leva `de`, `para`, `maxima`, o `item_id` e **qual** refeição do dia foi (`refeicao`), mais o valor efetivo dela (`restaurou`). `restaurou` pode ser maior que `para - de`: quem come com a barra quase cheia desperdiça o resto |
+| `ExperienciaGanhaEvent` | `SistemaOficios` (reage a todo evento de trabalho, na mesma batida do `EstaminaGastaEvent`) | `game/dev/painel_oficios.gd` — a barra do ofício anda. Leva o `oficio`, o `trabalho` que ensinou, o `xp` do gesto e o `total` acumulado: "+4" sozinho não diz se o jogador arou ou colheu |
+| `OficioSubiuEvent` | `SistemaOficios` (o XP cruzou um limiar da tabela) | `game/dev/painel_oficios.gd` — o ponto novo aparece no tabuleiro. Um evento por **salto**, não por nível: `de` → `para` conta o pulo inteiro e `pontos` traz quantos ele creditou |
+| `VantagemEscolhidaEvent` | `SistemaOficios` (`EscolherVantagemAction`, com o ponto já cobrado) | `SistemaCorpo` — guarda Mãos leves e Costas largas; `FarmSystem` — guarda Rega funda e a cultura especializada; `game/dev/painel_oficios.gd` — a linha vira comprada. É o **único** caminho pelo qual um efeito chega ao seu dono: leva `nivel` e `cultura` porque quem cobra não pode ir perguntar |
 
 ## Como o evento chega em `game/`
 
@@ -61,8 +64,8 @@ de cor.
 
 ## A ordem dos sistemas é regra de jogo
 
-Desde a wave 15 o tick central roda **Locais → Terreno → Inventory → Shipping →
-Farm → Corpo → Cidade → Contratos → Time**. O `SistemaLocais` é o primeiro por um motivo concreto, não por
+Desde a wave 17 o tick central roda **Locais → Terreno → Inventory → Shipping →
+Farm → Corpo → Ofícios → Cidade → Contratos → Time**. O `SistemaLocais` é o primeiro por um motivo concreto, não por
 organização: `PlantCropAction` estende `RemoveItemAction`, então a semente sai
 da mochila ao passar pelo `InventorySystem`. Se o carimbo de "fora do lugar"
 chegasse depois, plantar na cidade cobraria a semente de uma ação recusada.
@@ -86,6 +89,12 @@ posição depois do Inventory é obrigatória: `ComerAction` estende
 efeito colateral é o mesmo de `EntregarAction`: uma recusa do corpo (barra
 cheia, item que não alimenta) chega **depois** de o item já ter sido cobrado, e é
 por isso que existe `pode_comer()` e que `game/` pergunta antes de despachar.
+
+O `SistemaOficios` entra logo depois do Corpo, e pela mesma lógica: é o **mesmo
+golpe** que cansa e ensina, e a tabela de XP é lida da dele (`SistemaCorpo.CUSTOS`
+— constante, nunca state). A única ação que ele trata, a `EscolherVantagemAction`,
+não depende de posição nenhuma: comprar vantagem não cobra item nem dinheiro, e
+nenhum outro sistema pode recusá-la.
 
 A `SistemaCidade` entra depois do Farm — a colheita da manhã já está na mochila
 quando ela age — e antes do Time, que é quem fecha o dia.
@@ -194,3 +203,40 @@ o item — ela continua no mesmo endereço, agora com outra coisa.
 Save antigo (lista compacta, mais curta que a capacidade) carrega nas primeiras
 posições, que é onde os itens estavam. Foi por isso que o endereço fixo entrou
 sem migração.
+
+## O efeito viaja por evento, e quem cobra guarda a própria cópia
+
+A wave 17 pôs dois sistemas dependendo de um terceiro, e isso é a primeira vez
+que uma mecânica muda o **preço** de outra. A regra "ninguém lê state alheio"
+continua de pé porque o efeito não é lido: ele é entregue.
+
+`SistemaOficios` cobra o ponto e emite `VantagemEscolhidaEvent`. O `SistemaCorpo`
+reage e grava `maos_leves`/`costas_largas` no bloco `corpo`; o `FarmSystem` reage
+e grava `rega_funda`/`colheita_especializada` no bloco `farm`. Nenhum dos dois
+sabe o que é um ponto, quanto custou ou de que ofício saiu — e o
+`EstadoOficios` continua fechado.
+
+Três consequências que valem para toda vantagem futura:
+
+- **A cópia entra no save de quem cobra**, não no de quem vendeu. Carregar uma
+  partida não repassa evento nenhum: o efeito tem que já estar no bloco do dono,
+  com default inerte. Um save de antes da wave 17 carrega sem vantagem e sem
+  migração.
+- **O id da vantagem é escrito nos dois lados.** O corpo não referencia o
+  `SistemaOficios` (seria um círculo entre as duas classes), então ele repete a
+  string. Quem prende os dois é um teste por dono — id divergente desligaria o
+  efeito em silêncio, depois de o jogador já ter pago o ponto.
+- **A tabela de XP é o custo de tabela, não o custo do jogador.** `custo_de()`
+  devolve o número cru e `custo_para()` devolve o que aquele corpo paga. Se o XP
+  saísse do segundo, Mãos leves faria plantar deixar de ensinar — a vantagem se
+  puniria sozinha.
+
+## Vantagem no tabuleiro só existe se o efeito existir
+
+O tabuleiro do `SistemaOficios` lista quatro vantagens, e o planejamento da wave
+tinha oito. As outras quatro (Braço de poço, Golpe certeiro, Terra domada, Passo
+firme) ficam de fora até os donos dos seus efeitos reagirem ao
+`VantagemEscolhidaEvent` — `InventorySystem`, `SistemaTerreno` e `game/`.
+
+Vender vantagem sem efeito seria pior que não a vender: a compra é permanente e
+o ponto não volta, então o jogador pagaria por nada e não teria como descobrir.

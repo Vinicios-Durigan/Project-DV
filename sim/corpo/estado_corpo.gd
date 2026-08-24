@@ -39,12 +39,20 @@ class Corpo extends RefCounted:
 	## Quantas refeições este corpo já fez hoje. Só a contagem: **quanto** a
 	## terceira mordida vale é tabela do `SistemaCorpo`, como o custo de arar.
 	var refeicoes_hoje: int = 0
+	## A cópia local das vantagens que **este** sistema cobra: vantagem_id ->
+	## nível. Chega por `VantagemEscolhidaEvent` e mora aqui, e não no state dos
+	## ofícios, porque nenhum sistema lê state alheio.
+	##
+	## O que cada uma faz é tabela do `SistemaCorpo`. Aqui é número guardado, como
+	## a contagem de refeições.
+	var vantagens: Dictionary = {}
 
 	func to_dict() -> Dictionary:
 		return {
 			"estamina": estamina,
 			"maxima": maxima,
 			"refeicoes_hoje": refeicoes_hoje,
+			"vantagens": vantagens.duplicate(),
 		}
 
 	## Save editado à mão não pode criar um corpo impossível: máxima zerada
@@ -58,6 +66,17 @@ class Corpo extends RefCounted:
 			maxima = EstadoCorpo.ESTAMINA_PADRAO
 		estamina = clampi(int(data.get("estamina", maxima)), 0, maxima)
 		refeicoes_hoje = maxi(int(data.get("refeicoes_hoje", 0)), 0)
+
+		# Campo novo da wave 17. Ausente é corpo sem vantagem nenhuma, que é
+		# exatamente o comportamento de antes dela — o default é o que faz o save
+		# da 15.1 carregar sem migração.
+		vantagens = {}
+		var compradas: Dictionary = data.get("vantagens", {})
+		for chave: Variant in compradas:
+			var nivel := maxi(int(compradas[chave]), 0)
+			if nivel <= 0:
+				continue
+			vantagens[String(chave)] = nivel
 
 
 ## player_id (int) -> Corpo. Jogador ausente está inteiro.
@@ -88,6 +107,14 @@ func desmaiado(player_id: int) -> bool:
 func refeicoes_hoje(player_id: int) -> int:
 	var corpo := _jogadores.get(player_id, null) as Corpo
 	return corpo.refeicoes_hoje if corpo != null else 0
+
+## Que nível desta vantagem este corpo recebeu. Zero é não ter, e é o default que
+## preserva o comportamento de antes da wave 17.
+func nivel_da_vantagem(player_id: int, vantagem_id: String) -> int:
+	var corpo := _jogadores.get(player_id, null) as Corpo
+	if corpo == null:
+		return 0
+	return int(corpo.vantagens.get(vantagem_id, 0))
 
 ## Jogadores com corpo gravado, em ordem crescente — a ordem não pode depender
 ## de quem cansou primeiro.
@@ -155,6 +182,19 @@ func define_maxima(player_id: int, valor: int) -> void:
 	var corpo := _corpo(player_id)
 	corpo.maxima = valor
 	corpo.estamina = mini(corpo.estamina, valor)
+
+## Guarda o nível de uma vantagem que este sistema cobra. Nível menor é ignorado:
+## escolha comprada não volta, e um evento repetido não pode rebaixar ninguém.
+##
+## O state não sabe o que a vantagem faz — quem aplica o efeito é o
+## `SistemaCorpo`, do mesmo jeito que ele é quem sabe o custo de arar.
+func guarda_vantagem(player_id: int, vantagem_id: String, nivel: int) -> void:
+	if nivel <= 0:
+		return
+	var corpo := _corpo(player_id)
+	if int(corpo.vantagens.get(vantagem_id, 0)) >= nivel:
+		return
+	corpo.vantagens[vantagem_id] = nivel
 
 ## Anota mais uma refeição e devolve **qual** ela foi — a primeira do dia é 1.
 ##

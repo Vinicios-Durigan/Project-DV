@@ -99,9 +99,13 @@ func setup(bridge: SimBridge) -> void:
 func trabalhos() -> Array[String]:
 	return SistemaCorpo.TRABALHOS
 
+## Quanto este trabalho cobra **deste** corpo, já com as vantagens de Ofícios
+## aplicadas. É `custo_para` e não `custo_de` de propósito: quem comprou Mãos
+## leves planta de graça, e a tabela desta aba não pode ser a única tela do jogo
+## que ainda cobra por isso.
 func custo(trabalho: String) -> int:
 	var sistema := _sistema()
-	return sistema.custo_de(trabalho) if sistema != null else 0
+	return sistema.custo_para(SimFactory.PLAYER_PADRAO, trabalho) if sistema != null else 0
 
 ## Quantas ações deste tipo ainda cabem antes do desmaio.
 func cabem(trabalho: String) -> int:

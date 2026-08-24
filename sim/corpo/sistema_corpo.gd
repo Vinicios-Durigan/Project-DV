@@ -134,6 +134,27 @@ const FATORES_DE_SACIEDADE: Array[float] = [1.0, 0.5, 0.25, 0.1]
 ## existe para evitar, por outro caminho.
 const RESTAURO_MINIMO: int = 1
 
+## As vantagens que **este** sistema paga (wave 17). O id é o mesmo do tabuleiro
+## do `SistemaOficios`, escrito aqui de novo de propósito: o corpo não referencia
+## o sistema que o ensina, senão os dois passariam a se conhecer em círculo.
+## Quem prende os dois lados é o teste — id divergente desligaria o efeito em
+## silêncio, depois de o jogador já ter pago o ponto.
+const MAOS_LEVES: String = "maos_leves"
+const COSTAS_LARGAS: String = "costas_largas"
+
+## Mãos leves zera os trabalhos desta lista, um por nível: plantar no 1, colher
+## no 2. A ordem é a ordem em que o alívio chega, e é ela que faz o primeiro
+## ponto valer o gesto mais repetido do dia.
+##
+## Só o ciclo barato entra. Zerar arar ou derrubar árvore apagaria o corpo como
+## limitador do dia, e o corpo é metade do atrito que a wave 15 construiu.
+const TRABALHOS_DE_MAOS_LEVES: Array[String] = [PLANTAR, COLHER]
+
+## Quanto cada nível de Costas largas soma ao teto do corpo. Número de partida,
+## como a estamina padrão: dois níveis são +50 num corpo de 200, ~um quarto de
+## dia a mais.
+const BONUS_COSTAS_LARGAS: int = 25
+
 const MOTIVO_NAO_E_COMIDA: String = "nao_e_comida"
 const MOTIVO_ESTAMINA_CHEIA: String = "estamina_cheia"
 const MOTIVO_DESMAIADO: String = "desmaiado"
@@ -155,10 +176,26 @@ func get_state() -> EstadoCorpo:
 
 # --- Consultas (para `game/`, que nunca decide regra) ---
 
-## Quanto este trabalho cobra. Trabalho que o jogo não conhece custa 0 — mecânica
-## que ainda não existe não pode cansar ninguém.
+## Quanto este trabalho cobra **de tabela**. Trabalho que o jogo não conhece
+## custa 0 — mecânica que ainda não existe não pode cansar ninguém.
+##
+## É o número cru, sem vantagem nenhuma: é ele que o `SistemaOficios` usa como
+## tabela de XP, porque o que um gesto **ensina** não pode encolher quando ele
+## passa a cansar menos — a vantagem se puniria sozinha.
 func custo_de(trabalho: String) -> int:
 	return int(CUSTOS.get(trabalho, 0))
+
+## Quanto este trabalho cobra **deste corpo**, já com as vantagens compradas. É o
+## número que a tela mostra e o que o desconto usa.
+func custo_para(player_id: int, trabalho: String) -> int:
+	var custo := custo_de(trabalho)
+	if custo <= 0:
+		return 0
+	var nivel := _estado.nivel_da_vantagem(player_id, MAOS_LEVES)
+	if nivel <= 0:
+		return custo
+	var aliviados := TRABALHOS_DE_MAOS_LEVES.slice(0, nivel)
+	return 0 if aliviados.has(trabalho) else custo
 
 func estamina_de(player_id: int) -> int:
 	return _estado.estamina_de(player_id)
@@ -178,8 +215,11 @@ func fracao_de(player_id: int) -> float:
 ## Corpo faz, e ela é de regra: quem decide o que sobra é quem cobra.
 ##
 ## Arredonda para baixo: o golpe que não cabe inteiro é o golpe que derruba.
+##
+## Usa o custo **deste** corpo: com Mãos leves comprada, plantar sai de graça e a
+## conta deixa de existir — trabalho grátis não tem quantos cabem, cabem todos.
 func acoes_restantes(trabalho: String, player_id: int) -> int:
-	var custo := custo_de(trabalho)
+	var custo := custo_para(player_id, trabalho)
 	if custo <= 0:
 		return 0
 	return _estado.estamina_de(player_id) / custo
@@ -309,7 +349,43 @@ func react(event: SimEvent) -> Array[SimEvent]:
 		return _cansa((event as CropHarvestedEvent).player_id, COLHER)
 	if event is TerrenoMudouEvent:
 		return _limpeza(event as TerrenoMudouEvent)
+	if event is VantagemEscolhidaEvent:
+		return _aprende(event as VantagemEscolhidaEvent)
 	return []
+
+
+## O corpo aprendeu alguma coisa (wave 17). O efeito chega por evento e a cópia
+## fica aqui: o corpo nunca abre o state dos ofícios, e é isso que mantém
+## "ninguém lê state alheio" de pé com dois sistemas dependendo de um terceiro.
+##
+## Vantagem que não é deste sistema passa direto — a fila oferece todo evento a
+## todo mundo, e ignorar o que não é seu é o normal.
+func _aprende(event: VantagemEscolhidaEvent) -> Array[SimEvent]:
+	if event.vantagem_id != MAOS_LEVES and event.vantagem_id != COSTAS_LARGAS:
+		return []
+
+	_estado.guarda_vantagem(event.player_id, event.vantagem_id, event.nivel)
+	if event.vantagem_id == COSTAS_LARGAS:
+		_alarga(event.player_id)
+	return []
+
+
+## Recompõe o teto do corpo: o padrão mais o que Costas largas somou. Recalcular
+## do padrão, em vez de somar ao que estava, deixa um rebalanceamento da estamina
+## base valer para quem já comprou.
+##
+## O fôlego novo entra na hora, junto do teto — senão o jogador gasta o ponto
+## exausto e não sente nada até dormir, e a compra parece quebrada. Quem está no
+## chão fica no chão: a vantagem evita o desmaio, nunca o desfaz, mesma regra da
+## comida.
+func _alarga(player_id: int) -> void:
+	var antes := _estado.maxima_de(player_id)
+	var nivel := _estado.nivel_da_vantagem(player_id, COSTAS_LARGAS)
+	var depois := EstadoCorpo.ESTAMINA_PADRAO + nivel * BONUS_COSTAS_LARGAS
+	_estado.define_maxima(player_id, depois)
+	if _estado.desmaiado(player_id):
+		return
+	_estado.restaura(player_id, maxi(depois - antes, 0))
 
 
 ## A limpeza cobra pelo que **estava** no caminho, e só quando foi o jogador: o
@@ -329,7 +405,7 @@ func _limpeza(event: TerrenoMudouEvent) -> Array[SimEvent]:
 ## Quem já está em zero não desconta de novo: o dia dele acabou no golpe
 ## anterior, e um segundo `DesmaiouEvent` fecharia o dia duas vezes.
 func _cansa(player_id: int, trabalho: String) -> Array[SimEvent]:
-	var custo := custo_de(trabalho)
+	var custo := custo_para(player_id, trabalho)
 	var de := _estado.estamina_de(player_id)
 	if custo <= 0 or de <= 0:
 		return []

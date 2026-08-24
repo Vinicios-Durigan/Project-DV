@@ -69,18 +69,22 @@ const ESPACO_DO_ICONE_HOTBAR: float = 36.0
 ## mochila** — os dois números que brigam entre si o jogo inteiro.
 const ABA_MOCHILA: String = "mochila"
 const ABA_CORPO: String = "corpo"
+const ABA_OFICIOS: String = "oficios"
 const ABA_CIDADE: String = "cidade"
 const ABA_CONTRATOS: String = "contratos"
 const ABA_AMIZADE: String = "amizade"
 ## O corpo vem logo depois da mochila: as duas são o jogador — o que ele carrega
-## e o que ele aguenta. As três seguintes são a cidade, e ficam juntas.
-const ABAS: Array[String] = [ABA_MOCHILA, ABA_CORPO, ABA_CIDADE, ABA_CONTRATOS,
-	ABA_AMIZADE]
+## e o que ele aguenta. Os ofícios fecham esse bloco, porque são a terceira coisa
+## que o jogador leva consigo: o que ele **sabe**. As três seguintes são a
+## cidade, e ficam juntas.
+const ABAS: Array[String] = [ABA_MOCHILA, ABA_CORPO, ABA_OFICIOS, ABA_CIDADE,
+	ABA_CONTRATOS, ABA_AMIZADE]
 
 ## O nome de cada aba na tela. Os ids são de máquina; o texto é daqui.
 const NOMES_ABAS: Dictionary = {
 	ABA_MOCHILA: "Mochila",
 	ABA_CORPO: "Corpo",
+	ABA_OFICIOS: "Ofícios",
 	ABA_CIDADE: "Cidade",
 	ABA_CONTRATOS: "Contratos",
 	ABA_AMIZADE: "Amizade",
@@ -102,6 +106,7 @@ var _aba: String = ABA_MOCHILA
 var _botoes_aba: Dictionary = {}
 var _conteudo_mochila: Control
 var _corpo: PainelCorpo
+var _oficios: PainelOficios
 var _cidade: PainelCidade
 var _contratos: PainelContratos
 var _amizade: PainelAmizade
@@ -122,6 +127,7 @@ func setup(bridge: SimBridge) -> void:
 	# A casca para de repassar o fio em quem tem `setup`: o balcão da cidade é
 	# filho deste painel agora, então é este nó que o entrega.
 	_corpo.setup(bridge)
+	_oficios.setup(bridge)
 	_cidade.setup(bridge)
 	_contratos.setup(bridge)
 	_amizade.setup(bridge)
@@ -185,6 +191,13 @@ func corpo_visivel() -> bool:
 func painel_corpo() -> PainelCorpo:
 	return _corpo
 
+func oficios_visivel() -> bool:
+	return _oficios.visible
+
+## A árvore do jogador, para quem precisa dela — os testes e a casca.
+func painel_oficios() -> PainelOficios:
+	return _oficios
+
 func cidade_visivel() -> bool:
 	return _cidade.visible
 
@@ -239,6 +252,7 @@ func abre_cidade(id: String) -> void:
 func _mostra_aba_na_tela() -> void:
 	_conteudo_mochila.visible = _aba == ABA_MOCHILA
 	_corpo.visible = _aba == ABA_CORPO
+	_oficios.visible = _aba == ABA_OFICIOS
 	_cidade.visible = _aba == ABA_CIDADE
 	_contratos.visible = _aba == ABA_CONTRATOS
 	_amizade.visible = _aba == ABA_AMIZADE
@@ -415,6 +429,13 @@ func _monta_modal() -> void:
 	_corpo = PainelCorpo.new()
 	_corpo.name = "PainelCorpo"
 	coluna.add_child(_corpo)
+
+	# Fecha o bloco do jogador: a mochila diz o que ele carrega, o corpo o que
+	# ele aguenta, os ofícios o que ele **sabe**. É a única das três que não
+	# muda sozinha — ela só anda quando o trabalho de hoje já aconteceu.
+	_oficios = PainelOficios.new()
+	_oficios.name = "PainelOficios"
+	coluna.add_child(_oficios)
 
 	# A aba da cidade é o `PainelCidade` inteiro, montado aqui em vez de no
 	# `.tscn`: ele é conteúdo deste modal, e quem entrega o fio a ele é este nó
