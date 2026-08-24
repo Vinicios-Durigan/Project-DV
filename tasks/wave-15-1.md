@@ -99,14 +99,14 @@ Chutes para calibrar jogando, como a estamina e o `DIAS_POR_CONTRATO`.
 
 ## Tarefas
 
-### 15.1.1 — A comida vira conteúdo
+### 15.1.1 — A comida vira conteúdo ✅
 Altera: `sim/items/item_def.gd`, `tests/test_item_defs.gd`
 Cria: nada de código — os valores entram nos `.tres` de `data/items/`
 Faz: campo `restaura_estamina` com default 0 e um `alimenta()` que responde se
 o item é comida. Preenche os cinco `.tres` da tabela acima. O teste prende que
 `.tres` sem o campo continua inerte e que ferramenta nunca alimenta.
 
-### 15.1.2 — O corpo aprende a receber
+### 15.1.2 — O corpo aprende a receber ✅
 Altera: `sim/corpo/estado_corpo.gd`, `tests/test_estado_corpo.gd`
 Depende de: —
 Faz: `refeicoes_hoje` no state, `restaura(player_id, quanto)` com teto na
@@ -114,7 +114,7 @@ estamina máxima, e a contagem zerando na virada do dia. Hoje só existem
 `enche` e `enche_metade`. State burro: ele não sabe o que é saciedade, só
 guarda quantas refeições houve.
 
-### 15.1.3 — Comer
+### 15.1.3 — Comer ✅
 Cria: `sim/corpo/comer_action.gd`, `sim/corpo/comeu_event.gd`
 Altera: `sim/corpo/sistema_corpo.gd`, `tests/test_sistema_corpo.gd`
 Depende de: 15.1.1, 15.1.2
@@ -124,7 +124,7 @@ com `nao_e_comida`; expõe `pode_comer()` para `game/` perguntar antes. Reage a
 `DayEndedEvent` zerando a contagem de refeições, junto do restauro que já
 existe. Reescreve o cabeçalho: o corpo trata ação agora.
 
-### 15.1.4 — A mesa na aba Corpo
+### 15.1.4 — A mesa na aba Corpo ✅
 Altera: `game/dev/painel_corpo.gd`, `tests/test_painel_corpo.gd`
 Depende de: 15.1.3
 Faz: a lista das comidas que estão na mochila, cada uma com **quanto restaura

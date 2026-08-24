@@ -7,3 +7,4 @@ script = ExtResource("1_item_def")
 id = "cenoura"
 nome = "Cenoura"
 preco_venda = 65
+restaura_estamina = 25

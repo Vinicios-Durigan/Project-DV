@@ -68,14 +68,19 @@ const ESPACO_DO_ICONE_HOTBAR: float = 36.0
 ## mesmo espaço. E juntas elas põem a **cota** ao lado da **capacidade da
 ## mochila** — os dois números que brigam entre si o jogo inteiro.
 const ABA_MOCHILA: String = "mochila"
+const ABA_CORPO: String = "corpo"
 const ABA_CIDADE: String = "cidade"
 const ABA_CONTRATOS: String = "contratos"
 const ABA_AMIZADE: String = "amizade"
-const ABAS: Array[String] = [ABA_MOCHILA, ABA_CIDADE, ABA_CONTRATOS, ABA_AMIZADE]
+## O corpo vem logo depois da mochila: as duas são o jogador — o que ele carrega
+## e o que ele aguenta. As três seguintes são a cidade, e ficam juntas.
+const ABAS: Array[String] = [ABA_MOCHILA, ABA_CORPO, ABA_CIDADE, ABA_CONTRATOS,
+	ABA_AMIZADE]
 
 ## O nome de cada aba na tela. Os ids são de máquina; o texto é daqui.
 const NOMES_ABAS: Dictionary = {
 	ABA_MOCHILA: "Mochila",
+	ABA_CORPO: "Corpo",
 	ABA_CIDADE: "Cidade",
 	ABA_CONTRATOS: "Contratos",
 	ABA_AMIZADE: "Amizade",
@@ -96,6 +101,7 @@ var _titulo: Label
 var _aba: String = ABA_MOCHILA
 var _botoes_aba: Dictionary = {}
 var _conteudo_mochila: Control
+var _corpo: PainelCorpo
 var _cidade: PainelCidade
 var _contratos: PainelContratos
 var _amizade: PainelAmizade
@@ -115,6 +121,7 @@ func setup(bridge: SimBridge) -> void:
 	_bridge.sim_event.connect(_on_sim_event)
 	# A casca para de repassar o fio em quem tem `setup`: o balcão da cidade é
 	# filho deste painel agora, então é este nó que o entrega.
+	_corpo.setup(bridge)
 	_cidade.setup(bridge)
 	_contratos.setup(bridge)
 	_amizade.setup(bridge)
@@ -171,6 +178,13 @@ func mostra_aba(nome: String) -> void:
 func mochila_visivel() -> bool:
 	return _conteudo_mochila.visible
 
+func corpo_visivel() -> bool:
+	return _corpo.visible
+
+## A aba do corpo, para quem precisa dela — os testes e a casca.
+func painel_corpo() -> PainelCorpo:
+	return _corpo
+
 func cidade_visivel() -> bool:
 	return _cidade.visible
 
@@ -224,6 +238,7 @@ func abre_cidade(id: String) -> void:
 
 func _mostra_aba_na_tela() -> void:
 	_conteudo_mochila.visible = _aba == ABA_MOCHILA
+	_corpo.visible = _aba == ABA_CORPO
 	_cidade.visible = _aba == ABA_CIDADE
 	_contratos.visible = _aba == ABA_CONTRATOS
 	_amizade.visible = _aba == ABA_AMIZADE
@@ -393,6 +408,13 @@ func _monta_modal() -> void:
 	_conteudo_mochila.add_child(_secao("Mochila", true))
 	_conteudo_mochila.add_child(_secao("Caixote", false))
 	coluna.add_child(_conteudo_mochila)
+
+	# O corpo entra ao lado da mochila porque é a outra metade do mesmo assunto:
+	# a mochila diz quanto **cabe** carregar, o corpo diz quanto ainda **dá**
+	# para trabalhar. Os dois limites que o jogador leva consigo.
+	_corpo = PainelCorpo.new()
+	_corpo.name = "PainelCorpo"
+	coluna.add_child(_corpo)
 
 	# A aba da cidade é o `PainelCidade` inteiro, montado aqui em vez de no
 	# `.tscn`: ele é conteúdo deste modal, e quem entrega o fio a ele é este nó

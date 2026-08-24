@@ -8,3 +8,4 @@ id = "morango"
 nome = "Morango"
 preco_venda = 45
 stack_max = 999
+restaura_estamina = 20

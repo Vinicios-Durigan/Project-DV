@@ -7,12 +7,12 @@ extends RefCounted
 ## A montagem é **regra de jogo**, por isso mora aqui e não na bridge. Duas
 ## coisas se decidem nesta classe e nenhuma delas pode ser decidida por um nó:
 ##
-## - a **ordem dos sistemas** — Locais → Inventory → Shipping → Farm → Cidade →
-##   Time — que implementa a validação em cadeia e a sequência de dormir do
-##   GAMEPLAY §3. O Locais vem primeiro porque o carimbo de "fora do lugar" tem
-##   que existir antes de o Inventory cobrar qualquer coisa; a Cidade vem
-##   depois do Farm, para a colheita da manhã já estar na mochila quando ela
-##   age, e antes do Time, que é quem fecha o dia;
+## - a **ordem dos sistemas** — Locais → Terreno → Inventory → Shipping → Farm →
+##   Corpo → Cidade → Contratos → Time — que implementa a validação em cadeia e
+##   a sequência de dormir do GAMEPLAY §3. O Locais vem primeiro porque o
+##   carimbo de "fora do lugar" tem que existir antes de o Inventory cobrar
+##   qualquer coisa; a Cidade vem depois do Farm, para a colheita da manhã já
+##   estar na mochila quando ela age, e antes do Time, que é quem fecha o dia;
 ## - as **chaves dos states**, que são o formato do arquivo de save.
 ##
 ## `game/` pede um mundo pronto e não sabe de nenhuma das duas.
@@ -30,6 +30,7 @@ const CHAVE_LOCAIS: String = "locais"
 const CHAVE_CIDADE: String = "cidade"
 const CHAVE_CONTRATOS: String = "contratos"
 const CHAVE_TERRENO: String = "terreno"
+const CHAVE_CORPO: String = "corpo"
 
 ## Enquanto não existe co-op, o jogador é sempre o 0 — mas o id existe desde já.
 const PLAYER_PADRAO: int = 0
@@ -62,6 +63,7 @@ var _locais: EstadoLocais
 var _cidade: EstadoCidade
 var _contratos: EstadoContratos
 var _terreno: EstadoTerreno
+var _corpo: EstadoCorpo
 var _resolvedor: ResolvedorUso
 
 ## As definições dos estabelecimentos são carregadas pelo próprio
@@ -113,6 +115,9 @@ func get_estado_terreno() -> EstadoTerreno:
 func get_estado_contratos() -> EstadoContratos:
 	return _contratos
 
+func get_estado_corpo() -> EstadoCorpo:
+	return _corpo
+
 ## O mundo pronto para jogar: sistemas na ordem fixa, states no save e a mochila
 ## do primeiro dia. Quem vai carregar um save chama `restore()` logo depois — o
 ## restore substitui todo bloco registrado, inclusive o da partida nova.
@@ -125,6 +130,7 @@ func build() -> SimWorld:
 	_cidade = EstadoCidade.new()
 	_contratos = EstadoContratos.new()
 	_terreno = EstadoTerreno.new()
+	_corpo = EstadoCorpo.new()
 
 	var world := SimWorld.new()
 	# A ordem é regra de jogo: barrar fora de lugar → validar → vender →
@@ -140,6 +146,16 @@ func build() -> SimWorld:
 	world.register_system(InventorySystem.new(_inventory, _items, _crops))
 	world.register_system(ShippingSystem.new(_shipping, _items))
 	world.register_system(FarmSystem.new(_farm, _crops))
+	# Depois do Farm: trabalho não passa por ação nenhuma aqui — o corpo só reage
+	# ao que aconteceu. Para reações a posição não muda nada (a fila oferece cada
+	# evento a todos), e a razão de estar aqui é de leitura: os eventos de
+	# trabalho já passaram quando ele aparece na lista.
+	#
+	# Para a única ação que ele trata, a posição importa e é esta: `ComerAction`
+	# estende `RemoveItemAction`, então o pão sai da mochila no Inventory antes de
+	# o corpo recebê-lo. O catálogo vai junto porque quanto uma comida restaura é
+	# campo de `.tres` — comida nova chega ao corpo sem tocar em código.
+	world.register_system(SistemaCorpo.new(_corpo, _items))
 	world.register_system(SistemaCidade.new(_cidade, _dir_estabelecimentos))
 	# Depois da Cidade: o contrato é o degrau seguinte da mesma escada e reage ao
 	# `RelacaoSubiuEvent` que ela emite. A posição só importa para as ações —
@@ -158,6 +174,7 @@ func build() -> SimWorld:
 	world.register_state(CHAVE_CIDADE, _cidade)
 	world.register_state(CHAVE_CONTRATOS, _contratos)
 	world.register_state(CHAVE_TERRENO, _terreno)
+	world.register_state(CHAVE_CORPO, _corpo)
 
 	# Depois dos states, porque ele lê dois deles. Não entra na fila do tick: o
 	# resolvedor responde perguntas, não trata ações.

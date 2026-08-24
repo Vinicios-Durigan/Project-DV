@@ -8,3 +8,4 @@ id = "abobora"
 nome = "Abóbora"
 preco_venda = 180
 sprite = "uid://c1f7atpou6cth"
+restaura_estamina = 55

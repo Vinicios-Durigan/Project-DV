@@ -8,3 +8,4 @@ id = "pao"
 nome = "Pão"
 preco_venda = 260
 stack_max = 999
+restaura_estamina = 100

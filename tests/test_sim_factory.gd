@@ -33,21 +33,23 @@ func _do_tipo(tipo: Variant) -> SimSystem:
 	return null
 
 
-func test_monta_os_oito_sistemas_na_ordem_fixa() -> void:
+func test_monta_os_nove_sistemas_na_ordem_fixa() -> void:
 	var systems := _world.get_systems()
-	assert_eq(systems.size(), 8, "os 8 sistemas do slice")
+	assert_eq(systems.size(), 9, "os 9 sistemas do slice")
 	assert_true(_sistema(0) is SistemaLocais, "1. Locais barra fora de lugar antes de alguém cobrar")
 	assert_true(_sistema(1) is SistemaTerreno, "2. Terreno recusa limpeza antes de alguém cobrar")
 	assert_true(_sistema(2) is InventorySystem, "3. Inventory valida e cobra")
 	assert_true(_sistema(3) is ShippingSystem, "4. Shipping vende antes de o dia virar")
 	assert_true(_sistema(4) is FarmSystem, "5. Farm cresce depois da venda")
-	assert_true(_sistema(5) is SistemaCidade, "6. Cidade age com a colheita já na mochila")
-	assert_true(_sistema(6) is SistemaContratos, "7. Contratos, o degrau seguinte da cidade")
-	assert_true(_sistema(7) is TimeSystem, "8. Time vira o calendário por último")
+	assert_true(_sistema(5) is SistemaCorpo, "6. Corpo cobra o trabalho que já aconteceu")
+	assert_true(_sistema(6) is SistemaCidade, "7. Cidade age com a colheita já na mochila")
+	assert_true(_sistema(7) is SistemaContratos, "8. Contratos, o degrau seguinte da cidade")
+	assert_true(_sistema(8) is TimeSystem, "9. Time vira o calendário por último")
 
 func test_registra_todo_state_no_save_na_ordem_do_formato() -> void:
 	assert_eq(_world.state_keys(),
-		["time", "inventory", "farm", "shipping", "locais", "cidade", "contratos", "terreno"],
+		["time", "inventory", "farm", "shipping", "locais", "cidade", "contratos",
+			"terreno", "corpo"],
 		"as chaves são o formato do save — GAMEPLAY §10; bloco novo entra no fim")
 
 func test_o_state_registrado_e_o_mesmo_que_o_sistema_usa() -> void:

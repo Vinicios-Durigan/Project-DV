@@ -59,6 +59,7 @@ var _mochila: PainelMochila
 
 var _relogio: Label
 var _dinheiro: Label
+var _medidor_estamina: MedidorEstamina
 var _botoes_velocidade: Dictionary = {}
 var _botoes_locais: Dictionary = {}
 var _rotulo_mao: Label
@@ -115,9 +116,13 @@ func _passa_o_fio(no: Node) -> void:
 
 # --- Barra de status ---
 
-## Relógio à esquerda, velocidade no meio, dinheiro à direita — a mesma ordem
-## do mock. Os três são número, e número é sempre mono (variações `Relogio`,
-## `Dinheiro`).
+## Relógio à esquerda, velocidade no meio, corpo e dinheiro à direita — a mesma
+## ordem do mock. Todos são número, e número é sempre mono (variações `Relogio`,
+## `Dinheiro`, `Dado`).
+##
+## Os três limitadores do dia moram aqui, lado a lado: quanto tempo resta,
+## quanto corpo resta e quanto dinheiro há. É de propósito — a decisão de
+## "aguento mais um canteiro?" se toma olhando os três de uma vez.
 func _monta_barra() -> void:
 	var linha := get_node("Raiz/Barra/LinhaBarra") as HBoxContainer
 
@@ -138,6 +143,15 @@ func _monta_barra() -> void:
 	var folga := Control.new()
 	folga.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	linha.add_child(folga)
+
+	# O terceiro limitador do dia senta ao lado dos outros dois. Ele é montado
+	# aqui, e não no `.tscn`, porque esta faixa inteira é chrome da casca — e é
+	# por isso que o fio é entregue à mão: o `_passa_o_fio` já correu quando a
+	# barra nasce.
+	_medidor_estamina = MedidorEstamina.new()
+	_medidor_estamina.name = "MedidorEstamina"
+	linha.add_child(_medidor_estamina)
+	_medidor_estamina.setup(_bridge)
 
 	_dinheiro = Label.new()
 	_dinheiro.theme_type_variation = &"Dinheiro"

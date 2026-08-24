@@ -164,3 +164,59 @@ func test_o_campo_de_sprite_aceita_arrastar_do_filesystem() -> void:
 			assert_string_contains(String(prop["hint_string"]), "png")
 			return
 	fail_test("ItemDef não tem mais o campo sprite")
+
+
+# --- Comida (wave 15.1) ---
+
+## Os números da wave 15.1. Chute para calibrar jogando, como a estamina: o pão
+## restaura 100 dos 200 e desmaiar custa 100, então ele paga exatamente o
+## prejuízo e nada além.
+const RESTAURO_ESPERADO: Dictionary = {
+	"pao": 100,
+	"abobora": 55,
+	"cenoura": 25,
+	"morango": 20,
+	"rabanete": 15,
+}
+
+
+## O default preserva todo `.tres` que já existia: nenhum item virou comida de
+## carona, e comida nova é um número num `.tres`, não uma linha de código.
+func test_o_campo_de_comida_nasce_zerado() -> void:
+	var def := ItemDef.new()
+	assert_eq(def.restaura_estamina, 0, "campo novo não pode exigir edição do que já existia")
+	assert_false(def.alimenta(), "zero é item que não se come")
+
+func test_comida_restaura_o_que_a_tabela_da_wave_diz() -> void:
+	for id: String in RESTAURO_ESPERADO:
+		var def := _items.get_def(id)
+		assert_not_null(def, "%s: comida sem ItemDef não entra na mochila" % id)
+		assert_eq(def.restaura_estamina, int(RESTAURO_ESPERADO[id]),
+			"%s: o número de partida da wave 15.1" % id)
+		assert_true(def.alimenta(), "%s: quem restaura é comida" % id)
+
+## A cidade é o upgrade: cultura crua alimenta pouco e o pão beneficiado é o
+## topo da escada. Se uma colheita crua passasse o pão, a padaria viraria
+## enfeite e a curva de dependência do jogo se inverteria.
+func test_o_pao_e_a_comida_mais_forte() -> void:
+	var pao := _items.get_def("pao").restaura_estamina
+	for item_id in _items.ids():
+		assert_true(pao >= _items.get_def(item_id).restaura_estamina,
+			"%s: nada pode alimentar mais que o pão da cidade" % item_id)
+
+## Matéria-prima da cidade não se come crua — é o que obriga a passar pelo
+## moinho e pela padaria.
+func test_nao_se_come_materia_prima_crua() -> void:
+	for id in ["trigo", "farinha"]:
+		assert_false(_items.get_def(id).alimenta(), "%s: não se come cru" % id)
+
+func test_ferramenta_nunca_alimenta() -> void:
+	for id in SimFactory.FERRAMENTAS_INICIAIS:
+		assert_false(_items.get_def(id).alimenta(), "%s: ninguém come a enxada" % id)
+
+## Semente comida seria colheita perdida — e a saída fácil de um dia mal
+## planejado é justamente o que a saciedade existe para impedir.
+func test_semente_nao_se_come() -> void:
+	for crop_id in _crops.ids():
+		var semente := _items.get_def(_crops.get_def(crop_id).item_semente_id())
+		assert_false(semente.alimenta(), "%s: semente não é comida" % crop_id)

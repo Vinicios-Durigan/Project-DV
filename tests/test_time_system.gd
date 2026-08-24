@@ -105,3 +105,35 @@ func test_dia_27_ainda_nao_fecha_estacao() -> void:
 func test_sistema_nasce_com_state_proprio() -> void:
 	var solo := TimeSystem.new()
 	assert_eq(solo.get_state().dia, 1, "sem state injetado, cria o próprio")
+
+
+# --- O desmaio (wave 15) ---
+
+func test_desmaiar_encerra_o_dia_por_colapso() -> void:
+	_state.minuto = 900
+	var evento := DesmaiouEvent.new()
+	var events := _system.react(evento)
+
+	assert_eq(events.size(), 1, "o desmaio fecha o dia e nada mais")
+	var fim := events[0] as DayEndedEvent
+	assert_not_null(fim, "o evento é DayEndedEvent")
+	assert_eq(fim.cause, DayEndedEvent.Cause.COLLAPSED,
+			"cair de cansaço é o mesmo colapso das 02:00 — a causa sempre existiu")
+	assert_eq(fim.dia_encerrado, 1)
+	assert_eq(fim.dia_novo, 2)
+
+func test_desmaiar_acorda_as_seis_do_dia_seguinte() -> void:
+	_state.minuto = 900
+	_system.react(DesmaiouEvent.new())
+	assert_eq(_state.dia, 2)
+	assert_eq(_state.minuto, 360, "o desmaio segue a mesma sequência de dormir")
+
+func test_desmaiar_no_dia_28_fecha_a_estacao() -> void:
+	_state.dia = 28
+	var fim := _system.react(DesmaiouEvent.new())[0] as DayEndedEvent
+	assert_true(fim.fim_de_estacao, "o caminho é o mesmo, e o calendário também")
+
+func test_evento_alheio_nao_encerra_o_dia() -> void:
+	var events := _system.react(MinuteTickedEvent.new())
+	assert_eq(events, [] as Array[SimEvent], "o relógio não reage ao próprio tique")
+	assert_eq(_state.dia, 1)

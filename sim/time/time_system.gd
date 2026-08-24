@@ -35,6 +35,17 @@ func handle(action: SimAction) -> Array[SimEvent]:
 	events.append(_end_day(DayEndedEvent.Cause.SLEPT))
 	return events
 
+## O corpo caiu: o dia acaba por colapso, exatamente como às 02:00.
+##
+## É a fadiga que o `DayEndedEvent.Cause.COLLAPSED` esperava desde a wave 01 —
+## a causa nasceu sem consumidor de propósito, e a wave 15 só ligou o fio. O
+## `SistemaCorpo` não fecha o dia sozinho: quem é dono do calendário é este
+## sistema, e é dele que a cascata da manhã depende.
+func react(event: SimEvent) -> Array[SimEvent]:
+	if not event is DesmaiouEvent:
+		return []
+	return [_end_day(DayEndedEvent.Cause.COLLAPSED)]
+
 func _minute_ticked() -> MinuteTickedEvent:
 	var event := MinuteTickedEvent.new()
 	event.dia = _state.dia

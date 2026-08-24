@@ -5,8 +5,8 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | Evento | Quem emite | Quem escuta |
 | --- | --- | --- |
 | `MinuteTickedEvent` | `TimeSystem` (tick) | `game/dev/playground.gd` — o relógio da barra de status; HUD do jogo na wave de `game/` |
-| `DayEndedEvent` | `TimeSystem` (`SleepAction` → `SLEPT`; 02:00 → `COLLAPSED`) | `FarmSystem` — a cascata da manhã; `SaveGateway` — autosave (GAMEPLAY §3, passo 4); `game/dev/medidor_dia.gd` — fecha o resumo do dia e zera o cronômetro; fadiga futura ainda não escuta |
-| `ActionRejectedEvent` | quem detecta a impossibilidade (`SistemaLocais`, `SistemaTerreno`, `InventorySystem`, `ShippingSystem`, `FarmSystem`, `SistemaCidade`, `SistemaContratos`) | `game/dev/aviso_recusa.gd` — o toast com o motivo em português; sistemas seguintes só olham a flag `rejeitada` |
+| `DayEndedEvent` | `TimeSystem` (`SleepAction` → `SLEPT`; 02:00 e `DesmaiouEvent` → `COLLAPSED`) | `FarmSystem` — a cascata da manhã; `SistemaTerreno` — a noite do mato; `SistemaCorpo` — enche a estamina (cheia no `SLEPT`, metade no `COLLAPSED`) e limpa a mesa do dia (a saciedade zera nos dois casos); `SaveGateway` — autosave (GAMEPLAY §3, passo 4); `game/dev/medidor_dia.gd` — fecha o resumo do dia e zera o cronômetro; `game/dev/painel_corpo.gd` — zera o gasto do dia |
+| `ActionRejectedEvent` | quem detecta a impossibilidade (`SistemaLocais`, `SistemaTerreno`, `InventorySystem`, `ShippingSystem`, `FarmSystem`, `SistemaCidade`, `SistemaContratos`, `SistemaCorpo`) | `game/dev/aviso_recusa.gd` — o toast com o motivo em português; sistemas seguintes só olham a flag `rejeitada` |
 | `ItemAddedEvent` | `InventorySystem` (`AddItemAction`) | `game/dev/painel_mochila.gd` — a hotbar e a grade da mochila; popup de item na wave de `game/` |
 | `SlotMovidoEvent` | `InventorySystem` (`MoverSlotAction`) | `game/dev/painel_mochila.gd` — redesenha os dois quadrados que mudaram |
 | `SlotEquipadoEvent` | `InventorySystem` (`EquiparSlotAction`) | `game/dev/mira_ferramentas.gd` — troca o rótulo do retículo; `game/dev/painel_mochila.gd` — destaca o slot da mão |
@@ -14,10 +14,10 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | `ItemLostEvent` | `InventorySystem` (mochila cheia) | ninguém ainda — aviso na tela; drop no chão é futuro |
 | `MoneyChangedEvent` | `InventorySystem` (`AddMoneyAction`) | `game/dev/playground.gd` — o dinheiro da barra de status; HUD do jogo na wave de `game/` |
 | `ItemGrantedEvent` | qualquer mecânica que conceda item (`FarmSystem`, `ShippingSystem`, `SistemaCidade`) | `InventorySystem` — reage adicionando à mochila |
-| `PlotTilledEvent` | `FarmSystem` (`TillPlotAction`) | `game/dev/mundo_esboco.gd` — tremida da tela, swing e piscada do canteiro; troca do tile na wave de `game/` |
-| `CropPlantedEvent` | `FarmSystem` (`PlantCropAction`) | `game/dev/mundo_esboco.gd` — swing e piscada; sprite do estágio 0 na wave de `game/` |
-| `PlotWateredEvent` | `FarmSystem` (`WaterPlotAction`) | `game/dev/mundo_esboco.gd` — swing, piscada e o solo escurecendo; `game/dev/mira_ferramentas.gd` — relê o medidor de carga (uma regada saiu); ritmo de rega ainda é futuro |
-| `CropHarvestedEvent` | `FarmSystem` (`HarvestCropAction`) | `InventorySystem` (é um `ItemGrantedEvent`); `game/` anima o arco até o jogador |
+| `PlotTilledEvent` | `FarmSystem` (`TillPlotAction`) | `SistemaCorpo` — cobra o custo de arar; `game/dev/mundo_esboco.gd` — tremida da tela, swing e piscada do canteiro; troca do tile na wave de `game/` |
+| `CropPlantedEvent` | `FarmSystem` (`PlantCropAction`) | `SistemaCorpo` — cobra o custo de plantar; `game/dev/mundo_esboco.gd` — swing e piscada; sprite do estágio 0 na wave de `game/` |
+| `PlotWateredEvent` | `FarmSystem` (`WaterPlotAction`) | `SistemaCorpo` — cobra o custo de regar; `game/dev/mundo_esboco.gd` — swing, piscada e o solo escurecendo; `game/dev/mira_ferramentas.gd` — relê o medidor de carga (uma regada saiu) |
+| `CropHarvestedEvent` | `FarmSystem` (`HarvestCropAction`) | `InventorySystem` (é um `ItemGrantedEvent`); `SistemaCorpo` — cobra o custo de colher; `game/` anima o arco até o jogador |
 | `CropGrewEvent` | `FarmSystem` (reage a `DayEndedEvent`) | `game/dev/mundo_esboco.gd` — a cascata da manhã-espetáculo pisca canteiro a canteiro, na ordem dos plots (e sem swing: quem trabalhou foi a noite) |
 | `CropDiedEvent` | `FarmSystem` (fim de estação, dia 28) | ninguém ainda — sprite de murcha na wave de `game/` |
 | `ItemShippedEvent` | `ShippingSystem` (`ShipItemAction`, já cobrada pelo inventário) | ninguém ainda — painel do caixote na wave de `game/` |
@@ -25,7 +25,7 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | `ItemsSoldEvent` | `ShippingSystem` (`SleepAction`, passo 1 da sequência de dormir) | `InventorySystem` — soma o dinheiro; `game/dev/medidor_dia.gd` — monta o resumo do dia com estas linhas + `DayEndedEvent` |
 | `SeedBoughtEvent` | `InventorySystem` (`BuySeedAction`) | ninguém ainda — aba de compra do painel na wave de `game/`; o `MoneyChangedEvent` e o `ItemAddedEvent` vêm logo atrás |
 | `JogadorViajouEvent` | `SistemaLocais` (`ViajarAction`, despachada quando o jogador cruza a fronteira de um terreno) | `game/dev/mundo_esboco.gd` e `game/dev/inspetor_tile.gd` — mostram onde o jogador está **segundo a sim**; quando discordar da tela, quem errou é `game/` |
-| `TerrenoMudouEvent` | `SistemaTerreno` (limpeza do jogador, propagação da noite, arado que fechou, geração inicial — o `motivo` distingue) | `FarmSystem` — desara o tile que fechou; `game/dev/mundo_esboco.gd` — pinta a cobertura e pisca; `game/dev/inspetor_tile.gd` — mostra a cobertura crua. Sem `player_id` quando foi a noite |
+| `TerrenoMudouEvent` | `SistemaTerreno` (limpeza do jogador, propagação da noite, arado que fechou, geração inicial — o `motivo` distingue) | `FarmSystem` — desara o tile que fechou; `SistemaCorpo` — **só** o `motivo = limpeza` cansa, e o custo sai do `de` (a árvore cobra pela árvore, o toco pelo toco); `game/dev/mundo_esboco.gd` — pinta a cobertura e pisca; `game/dev/inspetor_tile.gd` — mostra a cobertura crua. Sem `player_id` quando foi a noite |
 | `EntregaAceitaEvent` | `SistemaCidade` (`EntregarAction`, já cobrada pelo inventário) | `game/dev/painel_cidade.gd` — põe a encomenda na fila com o tempo restante |
 | `BeneficiamentoProntoEvent` | `SistemaCidade` (reage ao relógio, quando o minuto de conclusão chega) | `game/dev/painel_cidade.gd` — a linha da fila vira "pronta". Não tem `player_id`: ninguém agiu, foi o tempo |
 | `RetiradaFeitaEvent` | `SistemaCidade` (`RetirarAction`, com a taxa já cobrada pelo inventário) | `InventorySystem` (é um `ItemGrantedEvent`) — o produto entra na mochila |
@@ -37,6 +37,9 @@ Mantido pelas skills `/dev` e `/revisar` — não edite à mão.
 | `ContratoFalhouEvent` | `SistemaContratos` (recusa do jogador, oferta expirada ou prazo estourado — o `motivo` distingue) | `SistemaCidade` — **só** o `estourado` custa 2 dias; `game/dev/painel_contratos.gd` — limpa a mesa e conta o que houve |
 | `DinheiroConcedidoEvent` | qualquer mecânica que pague sem ser o caixote (hoje `SistemaContratos`) | `InventorySystem` — soma na carteira. O irmão do `ItemGrantedEvent`; só crédito, porque cobrar precisa de ação que possa ser recusada |
 | `RegadorEnchidoEvent` | `InventorySystem` (`EncherRegadorAction`, só em cima do poço) | `game/dev/mira_ferramentas.gd` e `game/dev/painel_mochila.gd` — o medidor volta ao cheio. Leva `de`, `para` e `capacidade` para a tela escrever `15/15` sem abrir o `.tres` |
+| `EstaminaGastaEvent` | `SistemaCorpo` (reage a todo evento de trabalho: arar, plantar, regar, colher, limpar) | `game/dev/medidor_estamina.gd` — a barra da barra de status; `game/dev/painel_corpo.gd` — soma o gasto do dia, trabalho a trabalho. Leva `de`, `para`, `maxima` e o `trabalho`: a tela desenha a barra e conta o que cansou sem abrir state nenhum |
+| `DesmaiouEvent` | `SistemaCorpo` (a estamina chegou a zero) | `TimeSystem` — encerra o dia com `cause = COLLAPSED`, o mesmo caminho das 02:00. Não é recusa: o trabalho que derrubou aconteceu, e o `EstaminaGastaEvent` dele vem logo antes |
+| `ComeuEvent` | `SistemaCorpo` (`ComerAction`, já cobrada pelo inventário) | `game/dev/painel_corpo.gd` — redesenha a mesa e a barra; `game/dev/medidor_estamina.gd` — a barra da barra de status. Leva `de`, `para`, `maxima`, o `item_id` e **qual** refeição do dia foi (`refeicao`), mais o valor efetivo dela (`restaurou`). `restaurou` pode ser maior que `para - de`: quem come com a barra quase cheia desperdiça o resto |
 
 ## Como o evento chega em `game/`
 
@@ -58,8 +61,8 @@ de cor.
 
 ## A ordem dos sistemas é regra de jogo
 
-Desde a wave 14 o tick central roda **Locais → Terreno → Inventory → Shipping →
-Farm → Cidade → Contratos → Time**. O `SistemaLocais` é o primeiro por um motivo concreto, não por
+Desde a wave 15 o tick central roda **Locais → Terreno → Inventory → Shipping →
+Farm → Corpo → Cidade → Contratos → Time**. O `SistemaLocais` é o primeiro por um motivo concreto, não por
 organização: `PlantCropAction` estende `RemoveItemAction`, então a semente sai
 da mochila ao passar pelo `InventorySystem`. Se o carimbo de "fora do lugar"
 chegasse depois, plantar na cidade cobraria a semente de uma ação recusada.
@@ -68,6 +71,21 @@ O `SistemaTerreno` é o segundo pela mesma razão que o Locais é o primeiro:
 `LimparTerrenoAction` tem que poder ser recusada antes de qualquer sistema
 cobrar alguma coisa. A propagação da noite **não** depende dessa posição — ela
 acontece em `react`, e a fila oferece cada evento a todos.
+
+O `SistemaCorpo` entra logo depois do Farm e **não trata nenhuma ação de
+trabalho**. Isso é decisão, não lacuna: um validador de estamina teria que rodar
+antes do `InventorySystem` (que cobra a semente e a água) e depois do
+`SistemaTerreno` (que recusa a limpeza impossível), e não existe posição que
+satisfaça as duas. Reagindo ao evento, ele só desconta o que aconteceu de
+verdade — ação recusada não cansa ninguém, de graça.
+
+Desde a wave 15.1 ele trata **uma** ação, e só uma: a `ComerAction`. Ela é o
+caminho contrário — não observa um fato do mundo, ela é o fato —, e para ela a
+posição depois do Inventory é obrigatória: `ComerAction` estende
+`RemoveItemAction`, então o pão sai da mochila antes de o corpo recebê-lo. O
+efeito colateral é o mesmo de `EntregarAction`: uma recusa do corpo (barra
+cheia, item que não alimenta) chega **depois** de o item já ter sido cobrado, e é
+por isso que existe `pode_comer()` e que `game/` pergunta antes de despachar.
 
 A `SistemaCidade` entra depois do Farm — a colheita da manhã já está na mochila
 quando ela age — e antes do Time, que é quem fecha o dia.
@@ -83,6 +101,26 @@ está atrás dele na fila, e volta de lá como `RelacaoSubiuEvent`.
 Quem detecta a impossibilidade marca `action.rejeitada = true` e emite
 `ActionRejectedEvent`; os sistemas seguintes começam com `if action.rejeitada:
 return []`. Ninguém desfaz nada — é por isso que a ordem importa.
+
+## O desmaio dá a volta inteira na fila
+
+Desde a wave 15 existe um laço de três eventos que nasce e morre dentro de um
+`handle` só, e ele é a demonstração de que a fila de redistribuição funciona:
+
+1. o jogador ara — `FarmSystem` emite `PlotTilledEvent`;
+2. o `SistemaCorpo` reage, desconta 4 e a estamina chega a zero: sai
+   `EstaminaGastaEvent` e, atrás dele, `DesmaiouEvent`;
+3. o `TimeSystem` — que está **atrás** do corpo na ordem fixa — reage ao
+   desmaio e emite `DayEndedEvent` com `cause = COLLAPSED`;
+4. o `SistemaCorpo` reage à virada do dia e devolve metade da estamina.
+
+O `TimeSystem` já ter rodado no tick não impede nada: a fila oferece cada evento
+a **todos** os sistemas, inclusive aos que ficaram para trás. É o mesmo caminho
+que faz o `ContratoCumpridoEvent` chegar à `SistemaCidade`.
+
+E a `Cause.COLLAPSED` não foi inventada aqui: ela existe desde a wave 01, sem
+consumidor, esperando a fadiga que o `sim/CLAUDE.md` prometia. A wave 15 só
+ligou o fio — nenhum evento precisou de campo novo.
 
 ## A transação da cidade cabe em duas ações porque o dinheiro não é dela
 

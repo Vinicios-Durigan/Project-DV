@@ -94,3 +94,32 @@ const ACOES_CONHECIDAS: Array[String] = [ACAO_NENHUMA, ACAO_ARAR, ACAO_REGAR]
 ## Ferramenta nova continua sendo um `.tres`: quem quiser uma foice que corta
 ## mato e arbusto escreve os dois nomes aqui, sem tocar em código.
 @export var alvos_de_limpeza: Array[String] = []
+
+@export_group("Comida")
+## Quanta estamina este item devolve quando é comido. **Zero é item que não se
+## come**, e é o default que faz todo `.tres` de antes da wave 15.1 continuar
+## valendo sem edição — ninguém virou comida de carona.
+##
+## O número é o **cru**, do jeito que o artista o cadastrou. Quanto a mordida de
+## agora vale é outra conta: a saciedade do dia derruba a segunda refeição para
+## metade, a terceira para um quarto, e quem faz essa conta é o `SistemaCorpo`.
+## Aqui só mora o valor de tabela.
+##
+## A escada é de propósito: cultura crua alimenta pouco (cenoura 25) e o pão da
+## padaria alimenta muito (100). O jogador sobrevive sozinho no começo, mal e
+## porcamente, e a cidade é o upgrade — a mesma curva de dependência do resto do
+## jogo (PRINCIPIOS §1).
+##
+## Comida nova é `.tres` novo com este campo preenchido, zero código — a mesma
+## promessa de cultura e de estabelecimento.
+@export_range(0, 999, 1) var restaura_estamina: int = 0
+
+
+## Este item se come? É a pergunta que a mesa da aba Corpo faz para saber o que
+## listar, e o `SistemaCorpo` faz para recusar `nao_e_comida`.
+##
+## Mora aqui, e não num `if def.restaura_estamina > 0` espalhado, porque o dia em
+## que comida ganhar um segundo critério (estragada, crua) o teste continua sendo
+## um só.
+func alimenta() -> bool:
+	return restaura_estamina > 0
